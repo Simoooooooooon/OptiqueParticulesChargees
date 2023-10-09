@@ -236,7 +236,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.pushButton_stop_sin.setEnabled(stop_enabled)
 
 
-# Class thread pour la lecture
+# Class thread for the analog read
 class ReadThread(QtCore.QThread):
     mon_signal = QtCore.pyqtSignal(float)
 
