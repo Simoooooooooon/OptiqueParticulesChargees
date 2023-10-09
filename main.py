@@ -213,7 +213,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def update_x_axis(self, frequency):
         n_points = 500 / frequency
         if len(self.Y_write) > n_points:
-            self.Y_write.pop(0)  # retire le premier élément
+            self.Y_write.pop(0)  # Removes the first element
             self.write_graph.setXRange(len(self.Y_write) - n_points, len(self.Y_write))  # Adjusts the x-axis
 
     # Update the y-axis
