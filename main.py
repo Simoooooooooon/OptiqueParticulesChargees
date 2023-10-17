@@ -53,6 +53,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.calibre = self.comboBox_calibre.currentText()
         self.timer_data_acq = 2  # Time between every read acquisitions
         self.f_read_ech = self.spinBox_read_freq_ech.value()  # Get the reading frequency sampling rate
+        self.samples_per_read = int(self.f_read_ech * self.timer_data_acq / 1000)
 
     # Function to quit the application
     def quit(self):
@@ -134,10 +135,8 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # Gets the data from the card buffer
     def acquire_data(self):
-        f_read_ech = self.spinBox_read_freq_ech.value()  # Get the reading frequency sampling rate
-        samples_per_read = int(f_read_ech * self.timer_data_acq / 1000)
-        val = self.read_task.read(number_of_samples_per_channel=samples_per_read)
-        self.data_acquired.emit([val[0]])
+        val = self.read_task.read(number_of_samples_per_channel=self.samples_per_read)
+        self.data_acquired.emit(val)
 
     # Stops the reading
     def stop_read(self):
@@ -168,15 +167,17 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             freq = self.spinBox_freq.value()
             freq_ech = self.spinBox_write_freq_ech.value()
             amp = self.doubleSpinBox_ao.value()
-            temps = np.linspace(0, 1 / freq, int(freq_ech / freq), endpoint=False)
+            temps = np.linspace(0, 1/freq, int(freq_ech/freq), endpoint=False)
+            temps_graph = np.linspace(0, 1/freq, int(freq_ech), endpoint=False)
             signal = amp * np.sin(2 * np.pi * freq * temps)
-            self.Y_write_sin = signal.tolist()
+            signal_graph = amp * np.sin(2 * np.pi * freq * temps_graph)
+            self.Y_write_sin = signal_graph.tolist()
             self.write_sin_task = nidaqmx.Task()
             self.write_sin_task.ao_channels.add_ao_voltage_chan(f"{self.port_dev}/{self.comboBox_ao.currentText()}")
             self.write_sin_task.timing.cfg_samp_clk_timing(freq_ech, sample_mode=AcquisitionType.CONTINUOUS)
             self.write_sin_task.write(signal)
             self.write_sin_task.start()
-            self.prepare_plot_write_sin()
+            self.plot_write_sin()
 
         else:
             QtWidgets.QMessageBox.information(self, 'Error', 'No device connected')
@@ -193,16 +194,11 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # Changes the values of the sinus dynamically with the one from the interface
     def freq_amp_changed(self):
+        self.samples_per_read = int(self.f_read_ech * self.timer_data_acq / 1000)
         if not self.pushButton_test_sin.isEnabled():
-            freq = self.spinBox_freq.value()
-            freq_ech = self.spinBox_write_freq_ech.value()
-            amp = self.doubleSpinBox_ao.value()
-            temps = np.linspace(0, 1 / freq, int(freq_ech / freq), endpoint=False)
-            signal = amp * np.sin(2 * np.pi * freq * temps)
-            self.Y_write_sin = signal.tolist()
             self.Y_write_sin.clear()
             self.write_graph.clear()
-            self.prepare_plot_write_sin()
+            self.plot_write_sin()
             self.sin_stop()
             self.sin_start()
 
@@ -210,7 +206,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # Plotting part
 
     # Write-plot settings
-    def prepare_plot_write_sin(self):
+    def plot_write_sin(self):
         my_pen = pyqtgraph.mkPen(color=(0, 255, 0))
         self.data_line2 = self.write_graph.plot(self.Y_write_sin, pen=my_pen)
 
@@ -221,14 +217,10 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # Plots to the read graph
     def plot_read(self, value):
-        self.Y_read.append(value[0])
+        self.Y_read = value
         self.data_line1.setData(self.Y_read)
         self.read_graph.setYRange(-float(self.calibre), float(self.calibre))
-        # Chart scrolling
-        n_points = 100  # Number of points to display
-        if len(self.Y_read) > n_points:
-            self.Y_read.pop(0)  # Removes the first element
-            self.read_graph.setXRange(len(self.Y_read) - n_points, len(self.Y_read))  # Adjusts the x-axis
+        self.read_graph.setXRange(0, self.samples_per_read)
 
     # Clears the read graph
     def clear_read(self):
