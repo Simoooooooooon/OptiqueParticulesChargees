@@ -1,8 +1,8 @@
 import nidaqmx
 from nidaqmx.constants import TerminalConfiguration, AcquisitionType
 import sys
-from PyQt5 import QtCore, QtWidgets, uic
-from PyQt5.QtCore import QTimer
+from PyQt6 import QtCore, QtWidgets, uic
+from PyQt6.QtCore import QTimer
 import pyqtgraph
 import numpy as np
 
@@ -57,218 +57,280 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # Function to quit the application
     def quit(self):
-        QtCore.QCoreApplication.instance().quit()
-        self.stop_read()
-        self.write_sin_task.stop()
-        self.write_sin_task.close()
-        self.reset()
-        self.close()
+        try:
+            QtCore.QCoreApplication.instance().quit()
+            try:
+                self.stop_read()
+            except Exception as e:
+                print('Cannot stop the timer because it does not exists :', e)
+            self.read_task.stop()
+            self.read_task.close()
+            self.write_sin_task.stop()
+            self.write_sin_task.close()
+            self.reset()
+            self.close()
+        except Exception as e:
+            print('Quit function returned :', e)
 
     #########################################################################################
     # Connection part
 
     # Connection to the NI Card and verification
     def connect_to_card(self):
-        self.port_dev = self.comboBox_dev.currentText()
-        system = nidaqmx.system.System.local()
-        if not self.comboBox_dev.currentText() in system.devices:
-            QtWidgets.QMessageBox.information(self, 'Error', 'Wrong port choice')
-        else:
+        try:
             self.port_dev = self.comboBox_dev.currentText()
-            print(f"Connected to {self.port_dev}")
+            system = nidaqmx.system.System.local()
+            if not self.comboBox_dev.currentText() in system.devices:
+                QtWidgets.QMessageBox.information(self, 'Error', 'Wrong port choice')
+                self.port_dev = None
+            else:
+                self.port_dev = self.comboBox_dev.currentText()
+                print(f"Connected to {self.port_dev}")
+        except Exception as e:
+            print('Connect_to_card function returned :', e)
 
     #########################################################################################
     # Single value analog write part
 
     # Write the analog tension to the corresponding card/port
     def write(self, value=None):
-        # Gets and converts the values to write an analog tension
-        if value is False:
-            write_ao = float(self.doubleSpinBox_ao.text().replace(',', '.'))
-        else:
-            write_ao = value
+        try:
+            # Gets and converts the values to write an analog tension
+            if value is False:
+                write_ao = float(self.doubleSpinBox_ao.text().replace(',', '.'))
+            else:
+                write_ao = value
 
-        if self.port_dev is not None:
-            print(f"Writing {write_ao} to {self.port_dev}/{self.comboBox_ao.currentText()}")
-            with nidaqmx.Task() as write_task:
-                write_task.ao_channels.add_ao_voltage_chan(f"{self.port_dev}/{self.comboBox_ao.currentText()}")
-                write_task.write(write_ao)
-        else:
-            QtWidgets.QMessageBox.information(self, 'Error', 'No device connected')
+            if self.port_dev is not None:
+                print(f"Writing {write_ao} to {self.port_dev}/{self.comboBox_ao.currentText()}")
+                with nidaqmx.Task() as write_task:
+                    write_task.ao_channels.add_ao_voltage_chan(f"{self.port_dev}/{self.comboBox_ao.currentText()}")
+                    write_task.write(write_ao)
+            else:
+                QtWidgets.QMessageBox.information(self, 'Error', 'No device connected')
+        except Exception as e:
+            print('Write function returned :', e)
 
     #########################################################################################
     # Reading part
 
     # Get the channel and the calibre then start a thread
     def start_read(self):
-        if self.port_dev is not None:
-            f_read_ech = self.spinBox_read_freq_ech.value()  # Get the reading frequency sampling rate
-            time = self.timer_data_acq  # Time between every data acquisition in ms
-            self.ai = self.comboBox_ai.currentText()
-            self.calibre = self.comboBox_calibre.currentText()
-            self.clear_read()
+        try:
+            if self.port_dev is not None:
+                f_read_ech = self.spinBox_read_freq_ech.value()  # Get the reading frequency sampling rate
+                time = self.timer_data_acq  # Time between every data acquisition in ms
+                self.ai = self.comboBox_ai.currentText()
+                self.calibre = self.comboBox_calibre.currentText()
+                self.clear_read()
 
-            self.read_task.ai_channels.add_ai_voltage_chan(
-                f"{self.port_dev}/{self.ai}",
-                min_val=-float(self.calibre),
-                max_val=float(self.calibre),
-                terminal_config=TerminalConfiguration.DIFF
-            )
+                self.read_task.ai_channels.add_ai_voltage_chan(
+                    f"{self.port_dev}/{self.ai}",
+                    min_val=-float(self.calibre),
+                    max_val=float(self.calibre),
+                    terminal_config=TerminalConfiguration.DIFF
+                )
 
-            self.read_task.timing.cfg_samp_clk_timing(
-                rate=f_read_ech,
-                sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS
-            )
+                self.read_task.timing.cfg_samp_clk_timing(
+                    rate=f_read_ech,
+                    sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS
+                )
 
-            self.read_task.start()
+                self.read_task.start()
 
-            self.timer = QTimer(self)
-            self.timer.timeout.connect(self.acquire_data)
-            self.timer.start(time)
+                self.timer = QTimer(self)
+                self.timer.timeout.connect(self.acquire_data)
+                self.timer.start(time)
 
-            self.prepare_plot_read()
-            self.data_acquired.connect(self.plot_read)
-            self.update_read_button_states(False, True)  # Switch button states
+                self.prepare_plot_read()
+                self.data_acquired.connect(self.plot_read)
+                self.update_read_button_states(False, True)  # Switch button states
 
-        else:
-            QtWidgets.QMessageBox.information(self, 'Error', 'No device connected')
+            else:
+                QtWidgets.QMessageBox.information(self, 'Error', 'No device connected')
+        except Exception as e:
+            print('Start_read function returned :', e)
 
     # Gets the data from the card buffer
     def acquire_data(self):
-        val = self.read_task.read(number_of_samples_per_channel=self.samples_per_read)
-        self.data_acquired.emit(val)
+        try:
+            val = self.read_task.read(number_of_samples_per_channel=self.samples_per_read)
+            self.data_acquired.emit(val)
+        except Exception as e:
+            print('Acquire_data function returned :', e)
 
     # Stops the reading
     def stop_read(self):
-        self.Y_read.clear()  # Clear the read buffer
-        self.timer.stop()  # Stop the QTimer
-        self.read_task.stop()  # Stop the NI task
+        try:
+            self.Y_read.clear()  # Clear the read buffer
+            self.timer.stop()  # Stop the QTimer
+            self.read_task.stop()  # Stop the NI task
 
-        self.read_task.close()  # Close the NI task
+            self.read_task.close()  # Close the NI task
 
-        self.read_task = nidaqmx.Task()  # Initialize a new empty task
-        self.update_read_button_states(True, False)  # Update the button states
+            self.read_task = nidaqmx.Task()  # Initialize a new empty task
+            self.update_read_button_states(True, False)  # Update the button states
+        except Exception as e:
+            print('Stop_read function returned :', e)
 
     # Dynamically changes the calibre
     def calibre_changed(self):
-        self.read_graph.setYRange(-float(self.calibre), float(self.calibre))
-        if self.timer is not None:  # Prevent an error
-            if self.timer.isActive():  # If there is a timer running
-                self.stop_read()
-                self.start_read()
+        try:
+            self.read_graph.setYRange(-float(self.calibre), float(self.calibre))
+            if self.timer is not None:  # Prevent an error
+                if self.timer.isActive():  # If there is a timer running
+                    self.stop_read()
+                    self.start_read()
+        except Exception as e:
+            print('Calibre_changed function returned :', e)
 
     #########################################################################################
     # Sinus writing part
 
     # Sends a sin function to be written
     def sin_start(self):
-        if self.port_dev is not None:
-            self.update_write_button_states(False, True)
-            freq = self.spinBox_freq.value()
-            freq_ech = self.spinBox_write_freq_ech.value()
-            amp = self.doubleSpinBox_ao.value()
-            temps = np.linspace(0, 1/freq, int(freq_ech/freq), endpoint=False)
-            temps_graph = np.linspace(0, 1/freq, int(freq_ech), endpoint=False)
-            signal = amp * np.sin(2 * np.pi * freq * temps)
-            signal_graph = amp * np.sin(2 * np.pi * freq * temps_graph)
-            self.Y_write_sin = signal_graph.tolist()
-            self.write_sin_task = nidaqmx.Task()
-            self.write_sin_task.ao_channels.add_ao_voltage_chan(f"{self.port_dev}/{self.comboBox_ao.currentText()}")
-            self.write_sin_task.timing.cfg_samp_clk_timing(freq_ech, sample_mode=AcquisitionType.CONTINUOUS)
-            self.write_sin_task.write(signal)
-            self.write_sin_task.start()
-            self.plot_write_sin()
+        try:
+            if self.port_dev is not None:
+                self.update_write_button_states(False, True)
+                freq = self.spinBox_freq.value()
+                freq_ech = self.spinBox_write_freq_ech.value()
+                amp = self.doubleSpinBox_ao.value()
+                temps = np.linspace(0, 1 / freq, int(freq_ech / freq), endpoint=False)
+                temps_graph = np.linspace(0, 1 / freq, int(freq_ech), endpoint=False)
+                signal = amp * np.sin(2 * np.pi * freq * temps)
+                signal_graph = amp * np.sin(2 * np.pi * freq * temps_graph)
+                self.Y_write_sin = signal_graph.tolist()
+                self.write_sin_task = nidaqmx.Task()
+                self.write_sin_task.ao_channels.add_ao_voltage_chan(f"{self.port_dev}/{self.comboBox_ao.currentText()}")
+                self.write_sin_task.timing.cfg_samp_clk_timing(freq_ech, sample_mode=AcquisitionType.CONTINUOUS)
+                self.write_sin_task.write(signal)
+                self.write_sin_task.start()
+                self.plot_write_sin()
 
-        else:
-            QtWidgets.QMessageBox.information(self, 'Error', 'No device connected')
+            else:
+                QtWidgets.QMessageBox.information(self, 'Error', 'No device connected')
+        except Exception as e:
+            print('Sin_start function returned :', e)
 
     # Stops the sinus generation
     def sin_stop(self):
-        self.write_sin_task.stop()
-        self.write_sin_task.close()  # Removes the task in order to start it again if we need
-        self.write_sin_task = nidaqmx.Task()  # Make a new empty task
-        self.Y_write_sin.clear()  # Clear the write buffer
-        self.update_write_button_states(True, False)  # Update the button states
-        self.write_graph.clear()
-        self.write(0)
+        try:
+            self.write_sin_task.stop()
+            self.write_sin_task.close()  # Removes the task in order to start it again if we need
+            self.write_sin_task = nidaqmx.Task()  # Make a new empty task
+            self.Y_write_sin.clear()  # Clear the write buffer
+            self.update_write_button_states(True, False)  # Update the button states
+            self.write_graph.clear()
+            self.write(0)
+        except Exception as e:
+            print('Sin_stop function returned :', e)
 
     # Changes the values of the sinus dynamically with the one from the interface
     def freq_amp_changed(self):
-        self.samples_per_read = int(self.f_read_ech * self.timer_data_acq / 1000)
-        if not self.pushButton_test_sin.isEnabled():
-            self.Y_write_sin.clear()
-            self.write_graph.clear()
-            self.plot_write_sin()
-            self.sin_stop()
-            self.sin_start()
+        try:
+            self.samples_per_read = int(self.f_read_ech * self.timer_data_acq / 1000)
+            if not self.pushButton_test_sin.isEnabled():
+                self.Y_write_sin.clear()
+                self.write_graph.clear()
+                self.plot_write_sin()
+                self.sin_stop()
+                self.sin_start()
+        except Exception as e:
+            print('Freq_amp_changed function returned :', e)
 
     #########################################################################################
     # Plotting part
 
     # Write-plot settings
     def plot_write_sin(self):
-        my_pen = pyqtgraph.mkPen(color=(0, 255, 0))
-        self.data_line2 = self.write_graph.plot(self.Y_write_sin, pen=my_pen)
+        try:
+            my_pen = pyqtgraph.mkPen(color=(0, 255, 0))
+            self.data_line2 = self.write_graph.plot(self.Y_write_sin, pen=my_pen)
+        except Exception as e:
+            print('Plot_write_sin function returned :', e)
 
     # Read-plot settings
     def prepare_plot_read(self):
-        my_pen = pyqtgraph.mkPen(color=(255, 0, 0))
-        self.data_line1 = self.read_graph.plot(self.Y_read, pen=my_pen)
+        try:
+            my_pen = pyqtgraph.mkPen(color=(255, 0, 0))
+            self.data_line1 = self.read_graph.plot(self.Y_read, pen=my_pen)
+        except Exception as e:
+            print('Prepare_plot_read function returned :', e)
 
     # Plots to the read graph
     def plot_read(self, value):
-        self.Y_read = value
-        self.data_line1.setData(self.Y_read)
-        self.read_graph.setYRange(-float(self.calibre), float(self.calibre))
-        self.read_graph.setXRange(0, self.samples_per_read)
+        try:
+            self.Y_read = value
+            self.data_line1.setData(self.Y_read)
+            self.read_graph.setYRange(-float(self.calibre), float(self.calibre))
+            self.read_graph.setXRange(0, self.samples_per_read)
+        except Exception as e:
+            print('Plot_read function returned :', e)
 
     # Clears the read graph
     def clear_read(self):
-        self.read_graph.clear()
-        self.Y_read.clear()
+        try:
+            self.read_graph.clear()
+            self.Y_read.clear()
+        except Exception as e:
+            print('Clear_read function returned :', e)
 
     # Clears the write graph
     def clear_write(self):
-        self.write_graph.clear()
+        try:
+            self.write_graph.clear()
+        except Exception as e:
+            print('Clear_write function returned :', e)
 
     #########################################################################################
     # Button states part
 
     # Change the "Start" and "Stop" button states
     def update_read_button_states(self, start_disabled, stop_enabled):
-        self.pushButton_start_read.setEnabled(start_disabled)
-        self.pushButton_stop_read.setEnabled(stop_enabled)
+        try:
+            self.pushButton_start_read.setEnabled(start_disabled)
+            self.pushButton_stop_read.setEnabled(stop_enabled)
+        except Exception as e:
+            print('Update_read_button_states function returned :', e)
 
     # Change the "Sin test" and "Stop sin" button states
     def update_write_button_states(self, start_disabled, stop_enabled):
-        self.pushButton_test_sin.setEnabled(start_disabled)
-        self.pushButton_stop_sin.setEnabled(stop_enabled)
+        try:
+            self.pushButton_test_sin.setEnabled(start_disabled)
+            self.pushButton_stop_sin.setEnabled(stop_enabled)
+        except Exception as e:
+            print('Update_write_button_states function returned :', e)
 
     #########################################################################################
     # Reset part
 
     # Resets analog outputs => Writes 0V to both
     def reset(self):
-        if not self.pushButton_test_sin.isEnabled():
-            self.sin_stop()
-        if self.port_dev is not None:
-            with nidaqmx.Task() as reset_task:
-                reset_task.ao_channels.add_ao_voltage_chan(f"{self.port_dev}/ao0")
-                reset_task.ao_channels.add_ao_voltage_chan(f"{self.port_dev}/ao1")
-                reset_task.write([0, 0])
-            print("Reset success")
-        else:
-            QtWidgets.QMessageBox.information(self, 'Error', 'No device connected')
-
+        try:
+            if not self.pushButton_test_sin.isEnabled():
+                self.sin_stop()
+            if self.port_dev is not None:
+                with nidaqmx.Task() as reset_task:
+                    reset_task.ao_channels.add_ao_voltage_chan(f"{self.port_dev}/ao0")
+                    reset_task.ao_channels.add_ao_voltage_chan(f"{self.port_dev}/ao1")
+                    reset_task.write([0, 0])
+                print("Reset success")
+            else:
+                QtWidgets.QMessageBox.information(self, 'Error', 'No device connected')
+        except Exception as e:
+            print('Reset function returned :', e)
     #########################################################################################
 
 
 # Starts the interface
 def run_interface():
-    app = QtWidgets.QApplication(sys.argv)  # Create a Qt application
-    window = MyWindow()  # Create an instance of MyWindow
-    window.show()  # Show the window
-    sys.exit(app.exec_())  # Start the application event loop
+    try:
+        app = QtWidgets.QApplication(sys.argv)  # Create a Qt application
+        window = MyWindow()  # Create an instance of MyWindow
+        window.show()  # Show the window
+        sys.exit(app.exec())  # Start the application event loop
+    except Exception as e:
+        print('Run_interface returned :', e)
 
 
 # Main function
