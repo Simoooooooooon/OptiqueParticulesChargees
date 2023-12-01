@@ -34,8 +34,11 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         # Connect sliders to their respective functions
         self.gpp_2323_tension_slider.valueChanged.connect(self.gpp_2323_slider_changed)
+        self.gpp_2323_tension_slider.sliderReleased.connect(self.gpp_2323_slider_released)
         self.gpp_4323_tension_slider.valueChanged.connect(self.gpp_4323_tension_slider_changed)
+        self.gpp_4323_tension_slider.sliderReleased.connect(self.gpp_4323_tension_slider_released)
         self.brightness_slider.valueChanged.connect(self.gpp_4323_brightness_slider_changed)
+        self.brightness_slider.sliderReleased.connect(self.gpp_4323_brightness_slider_released)
 
         # Initialize instance variables
         self.port_dev = None
@@ -52,8 +55,23 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.populate_gpp_4323_combobox()
 
     # Function to quit the application
-    @staticmethod
-    def quit():
+
+    def quit(self):
+        if self.gpp_2323 is not None:
+            self.gpp_2323.write(f'ISET1:0')  # Fixes the maximum current so we can have a tension
+            self.gpp_2323.write(f'ISET2:0')  # Fixes the maximum current so we can have a tension
+            self.gpp_2323.write(f'VSET1:0')  # Sets the channel tension to 0V
+            self.gpp_2323.write(f'VSET2:0')  # Sets the channel tension to 0V
+            self.gpp_2323.write(f':ALLOUTOFF')  # Enables every channel
+        if self.gpp_4323 is not None:
+            self.gpp_4323.write(f'ISET1:0')  # Fixes the maximum current so we can have a tension
+            self.gpp_4323.write(f'ISET2:0')  # Fixes the maximum current so we can have a tension
+            self.gpp_4323.write(f'ISET4:0')  # Fixes the maximum current so we can have a tension
+            self.gpp_4323.write(f'VSET1:0')  # Sets the channel tension to 0V
+            self.gpp_4323.write(f'VSET2:0')  # Sets the channel tension to 0V
+            self.gpp_4323.write(f'VSET3:0')  # Sets the channel tension to 0V
+            self.gpp_4323.write(f'VSET4:0')  # Sets the channel tension to 0V
+            self.gpp_4323.write(f':ALLOUTOFF')  # Enables every channel
         QtCore.QCoreApplication.instance().quit()
 
     #########################################################################################
@@ -128,6 +146,8 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.gpp_2323_tension_slider.setEnabled(True)  # Allow the user to use the slider
                     self.gpp_2323.write(f'ISET1:0.03')  # Fixes the maximum current so we can have a tension
                     self.gpp_2323.write(f'ISET2:0.03')  # Fixes the maximum current so we can have a tension
+                    self.gpp_2323.write(f'VSET1:0')  # Sets the channel tension to 0V
+                    self.gpp_2323.write(f'VSET2:0')  # Sets the channel tension to 0V
                     self.gpp_2323.write(f':ALLOUTON')  # Enables every channel
                 except Exception as e:
                     QtWidgets.QMessageBox.information(self, 'Error', f"Couldn't connect to the instrument : {e}")
@@ -178,6 +198,10 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.gpp_4323.write(f'ISET1:0.03')  # Fixes the maximum current so we can have a tension
                     self.gpp_4323.write(f'ISET2:0.03')  # Fixes the maximum current so we can have a tension
                     self.gpp_4323.write(f'ISET4:0.03')  # Fixes the maximum current so we can have a tension
+                    self.gpp_4323.write(f'VSET1:0')  # Sets the channel tension to 0V
+                    self.gpp_4323.write(f'VSET2:0')  # Sets the channel tension to 0V
+                    self.gpp_4323.write(f'VSET3:0')  # Sets the channel tension to 0V
+                    self.gpp_4323.write(f'VSET4:0')  # Sets the channel tension to 0V
                     self.gpp_4323.write(f':ALLOUTON')  # Enables every channel
                 except Exception as e:
                     QtWidgets.QMessageBox.information(self, 'Error', f"Couldn't connect to the instrument : {e}")
@@ -201,31 +225,49 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             tension = self.gpp_2323_tension_slider.value()  # Gets the value of the slider
             self.label_current_tension_gpp_2323.setText(
                 f'Supply voltage (V) : {str(tension)}')  # Shows to the user the current tension
-            self.update_gpp_2323_thread = GPP2323UpdateThread(self.gpp_2323, tension)
-            self.update_gpp_2323_thread.finished.connect(self.deleteLater)  # Cleans the thread when done
-            self.update_gpp_2323_thread.start()  # Starts the thread
         except Exception as e:
             QtWidgets.QMessageBox.information(self, 'Error', f"Gpp_2323_slider_changed returned : {e}")
+
+    def gpp_2323_slider_released(self):
+        try:
+            tension = self.gpp_2323_tension_slider.value()  # Gets the value of the slider
+            self.update_gpp_2323_thread = GPP2323UpdateThread(self.gpp_2323, tension)
+            self.update_gpp_2323_thread.finished.connect(self.thread_cleanup)  # Cleans the thread when done
+            self.update_gpp_2323_thread.start()  # Starts the thread
+        except Exception as e:
+            QtWidgets.QMessageBox.information(self, 'Error', f"Gpp_2323_slider_released returned : {e}")
 
     def gpp_4323_tension_slider_changed(self):
         try:
             tension = self.gpp_4323_tension_slider.value()  # Gets the value of the slider
             self.label_current_tension_gpp_4323.setText(
                 f'Supply voltage (V) : {str(tension)}')  # Shows to the user the current tension
-            self.update_gpp_4323_thread = GPP4323UpdateThread(self.gpp_4323, tension)
-            self.update_gpp_4323_thread.finished.connect(self.deleteLater)  # Cleans the thread when done
-            self.update_gpp_4323_thread.start()  # Starts the thread
         except Exception as e:
             QtWidgets.QMessageBox.information(self, 'Error', f"Gpp_4323_slider_changed returned : {e}")
+
+    def gpp_4323_tension_slider_released(self):
+        try:
+            tension = self.gpp_4323_tension_slider.value()  # Gets the value of the slider
+            self.update_gpp_4323_thread = GPP4323UpdateThread(self.gpp_4323, tension)
+            self.update_gpp_4323_thread.finished.connect(self.thread_cleanup)  # Cleans the thread when done
+            self.update_gpp_4323_thread.start()  # Starts the thread
+        except Exception as e:
+            QtWidgets.QMessageBox.information(self, 'Error', f"Gpp_4323_slider_released returned : {e}")
 
     def gpp_4323_brightness_slider_changed(self):
         try:
             tension = self.brightness_slider.value()  # Gets the value of the slider
             self.label_current_brightness.setText(
                 f'Brightness tension (V) : {str(tension)}')  # Shows to the user the current tension
-            self.gpp_4323.write(f'VSET4:{self.tension}')
         except Exception as e:
             QtWidgets.QMessageBox.information(self, 'Error', f"Gpp_4323_brightness_slider_changed returned : {e}")
+
+    def gpp_4323_brightness_slider_released(self):
+        try:
+            tension = self.brightness_slider.value()  # Gets the value of the slider
+            self.gpp_4323.write(f'VSET4:{tension}')
+        except Exception as e:
+            QtWidgets.QMessageBox.information(self, 'Error', f"Gpp_4323_brightness_slider_released returned : {e}")
 
     #########################################################################################
     # Multithreading part
@@ -239,8 +281,8 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
 # Thread Class for Updating GPP2323's tension (-32V ; +32V)
 class GPP2323UpdateThread(QThread):
-    def __init__(self, gpp_2323, tension):
-        super(GPP2323UpdateThread, self).__init__()  # Initialize the QThread parent class
+    def __init__(self, gpp_2323, tension, parent=None):
+        super(GPP2323UpdateThread, self).__init__(parent)  # Initialize the QThread parent class
         self.gpp_2323 = gpp_2323  # Stores the reference to the GPP2323 device object
         self.tension = tension  # Stores the tension value to be set
 

@@ -206,7 +206,7 @@
       </rect>
      </property>
      <property name="text">
-      <string>Alimentation tension (V) : 0</string>
+      <string>Supply voltage (V) : 0</string>
      </property>
     </widget>
     <widget class="QLabel" name="min_label">
@@ -338,7 +338,7 @@
       </rect>
      </property>
      <property name="text">
-      <string>Alimentation tension (V) : 0</string>
+      <string>Supply voltage (V) : 0</string>
      </property>
     </widget>
     <widget class="QLabel" name="min_label_2">
