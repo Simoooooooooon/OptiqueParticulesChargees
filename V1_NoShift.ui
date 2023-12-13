@@ -105,7 +105,7 @@
      <string>Reprendre</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="pushButton">
+   <widget class="QPushButton" name="Connect">
     <property name="geometry">
      <rect>
       <x>980</x>
@@ -116,6 +116,16 @@
     </property>
     <property name="text">
      <string>Connect</string>
+    </property>
+   </widget>
+   <widget class="QComboBox" name="chan_dev">
+    <property name="geometry">
+     <rect>
+      <x>980</x>
+      <y>130</y>
+      <width>91</width>
+      <height>21</height>
+     </rect>
     </property>
    </widget>
   </widget>
