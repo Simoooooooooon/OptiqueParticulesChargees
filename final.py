@@ -89,7 +89,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.comboBox_dev.addItems(items)  # Add new items
 
         except Exception as e:
-            QtWidgets.QMessageBox.information(self, 'Error', f"populate_dev_combobox function returned : {e}")
+            self.Message('Error', f"populate_dev_combobox function returned : {e}")
 
     # Connection to the NI Card and verification
     def connect_to_card(self):
@@ -98,7 +98,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             system = nidaqmx.system.System.local()
             if (not self.comboBox_dev.currentText() in system.devices) or (
                     self.comboBox_dev.currentText() == ""):  # Checks if the device is connected
-                QtWidgets.QMessageBox.information(self, 'Error', 'Wrong port choice')
+                self.Message('Error', 'Wrong port choice')
                 self.populate_dev_combobox()
                 self.port_dev = None
             else:  # If the device is connected, we do this
@@ -114,7 +114,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.comboBox_ai.addItems(ai_channels)  # Add new items
 
         except Exception as e:
-            QtWidgets.QMessageBox.information(self, 'Error', f"Connect_to_card function returned : {e}")
+            self.Message('Error', f"Connect_to_card function returned : {e}")
 
     #########################################################################################
     # Gpp_2323 connection part
@@ -129,7 +129,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.comboBox_gpp_2323.addItems(items)  # Add new items
 
         except Exception as e:
-            QtWidgets.QMessageBox.information(self, 'Error', f"populate_gpp_2323_combobox function returned : {e}")
+            self.Message('Error', f"populate_gpp_2323_combobox function returned : {e}")
 
     # Connection to the Gpp_2323 and verification
     def connect_to_gpp_2323(self):
@@ -140,7 +140,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             rm.close()
             if (not self.comboBox_gpp_2323.currentText() in items) or (
                     self.comboBox_gpp_2323.currentText() == ""):  # Checks if the device is connected
-                QtWidgets.QMessageBox.information(self, 'Error', 'Wrong choice')
+                self.Message('Error', 'Wrong choice')
                 self.populate_gpp_2323_combobox()
                 self.port_gpp_2323 = None
             else:  # If the device is connected, we do this
@@ -155,18 +155,17 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.gpp_2323.write(f'VSET2:0')  # Sets the channel tension to 0V
                     self.gpp_2323.write(f':ALLOUTON')  # Enables every channel
                 except Exception as e:
-                    QtWidgets.QMessageBox.information(self, 'Error', f"Couldn't connect to the instrument : {e}")
+                    self.Message('Error', f"Couldn't connect to the instrument : {e}")
                     self.gpp_2323_tension_slider.setEnabled(False)  # Prevent the user from using the slider
                     self.populate_gpp_2323_combobox()
                     self.port_gpp_2323 = None
 
         except Exception as e:
-            QtWidgets.QMessageBox.information(self, 'Error', f"Connect_to_gpp_2323 function returned : {e}")
+            self.Message('Error', f"Connect_to_gpp_2323 function returned : {e}")
 
     # Connection help button
     def gpp_2323_help(self):
-        QtWidgets.QMessageBox.information(self, 'Help',
-                                          'Connect both CH1(-) and CH2(-) together and take your output between CH1(+) and CH2(+).')
+        self.Message( 'Help', 'Connect both CH1(-) and CH2(-) together and take your output between CH1(+) and CH2(+).')
 
     #########################################################################################
     # Gpp_4323 connection part
@@ -181,7 +180,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.comboBox_gpp_4323.addItems(items)  # Add new items
 
         except Exception as e:
-            QtWidgets.QMessageBox.information(self, 'Error', f"populate_gpp_4323_combobox function returned : {e}")
+            self.Message('Error', f"populate_gpp_4323_combobox function returned : {e}")
 
     # Connection to the gpp_4323 and verification
     def connect_to_gpp_4323(self):
@@ -192,7 +191,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             rm.close()
             if (not self.comboBox_gpp_4323.currentText() in items) or (
                     self.comboBox_gpp_4323.currentText() == ""):  # Checks if the device is connected
-                QtWidgets.QMessageBox.information(self, 'Error', 'Wrong choice')
+                self.Message('Error', 'Wrong choice')
                 self.populate_gpp_4323_combobox()
                 self.port_gpp_4323 = None
             else:  # If the device is connected, we do this
@@ -211,19 +210,19 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.gpp_4323.write(f'VSET4:0')  # Sets the channel tension to 0V
                     self.gpp_4323.write(f':ALLOUTON')  # Enables every channel
                 except Exception as e:
-                    QtWidgets.QMessageBox.information(self, 'Error', f"Couldn't connect to the instrument : {e}")
+                    self.Message('Error', f"Couldn't connect to the instrument : {e}")
                     self.gpp_4323_tension_slider.setEnabled(False)  # Prevent the user from using the slider
                     self.brightness_slider.setEnabled(False)  # Prevent the user from using the slider
                     self.populate_gpp_4323_combobox()
                     self.port_gpp_4323 = None
 
         except Exception as e:
-            QtWidgets.QMessageBox.information(self, 'Error', f"Connect_to_gpp_4323 function returned : {e}")
+            self.Message('Error', f"Connect_to_gpp_4323 function returned : {e}")
 
     # Connection help button
     def gpp_4323_help(self):
-        QtWidgets.QMessageBox.information(self, 'Help',
-                                          'Connect both CH1(-) and CH2(-) together and take your output between CH1(+) and CH2(+).\nConnect the electron detector to CH4.')
+        self.Message('Help',
+                     'Connect both CH1(-) and CH2(-) together and take your output between CH1(+) and CH2(+).\nConnect the electron detector to CH4.')
 
     #########################################################################################
     # Sliders part
@@ -233,7 +232,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.label_current_tension_gpp_2323.setText(
                 f'Supply voltage (V) : {str(tension)}')  # Shows to the user the current tension
         except Exception as e:
-            QtWidgets.QMessageBox.information(self, 'Error', f"Gpp_2323_slider_changed returned : {e}")
+            self.Message('Error', f"Gpp_2323_slider_changed returned : {e}")
 
     def gpp_2323_slider_released(self):
         try:
@@ -242,7 +241,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.update_gpp_2323_thread.finished.connect(self.thread_cleanup)  # Cleans the thread when done
             self.update_gpp_2323_thread.start()  # Starts the thread
         except Exception as e:
-            QtWidgets.QMessageBox.information(self, 'Error', f"Gpp_2323_slider_released returned : {e}")
+            self.Message('Error', f"Gpp_2323_slider_released returned : {e}")
 
     def gpp_4323_tension_slider_changed(self):
         try:
@@ -250,7 +249,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.label_current_tension_gpp_4323.setText(
                 f'Supply voltage (V) : {str(tension)}')  # Shows to the user the current tension
         except Exception as e:
-            QtWidgets.QMessageBox.information(self, 'Error', f"Gpp_4323_slider_changed returned : {e}")
+            self.Message('Error', f"Gpp_4323_slider_changed returned : {e}")
 
     def gpp_4323_tension_slider_released(self):
         try:
@@ -259,7 +258,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.update_gpp_4323_thread.finished.connect(self.thread_cleanup)  # Cleans the thread when done
             self.update_gpp_4323_thread.start()  # Starts the thread
         except Exception as e:
-            QtWidgets.QMessageBox.information(self, 'Error', f"Gpp_4323_slider_released returned : {e}")
+            self.Message('Error', f"Gpp_4323_slider_released returned : {e}")
 
     def gpp_4323_brightness_slider_changed(self):
         try:
@@ -267,14 +266,14 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.label_current_brightness.setText(
                 f'Brightness tension (V) : {str(tension)}')  # Shows to the user the current tension
         except Exception as e:
-            QtWidgets.QMessageBox.information(self, 'Error', f"Gpp_4323_brightness_slider_changed returned : {e}")
+            self.Message('Error', f"Gpp_4323_brightness_slider_changed returned : {e}")
 
     def gpp_4323_brightness_slider_released(self):
         try:
             tension = self.brightness_slider.value()  # Gets the value of the slider
             self.gpp_4323.write(f'VSET4:{tension}')
         except Exception as e:
-            QtWidgets.QMessageBox.information(self, 'Error', f"Gpp_4323_brightness_slider_released returned : {e}")
+            self.Message('Error', f"Gpp_4323_brightness_slider_released returned : {e}")
 
     #########################################################################################
     # Multithreading part
@@ -284,6 +283,17 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         sender = self.sender()  # Retrieves the object that emitted the signal (in this case, the finished thread)
         if sender:
             sender.deleteLater()  # Safely deletes the thread object to free up resources
+
+    # Error message that doesn't freeze the interface
+    def Message(self, title, message):
+        # Create a non-modal message box
+        msgBox = QtWidgets.QMessageBox(self)  # Message box
+        msgBox.setIcon(QtWidgets.QMessageBox.Icon.Information)  # Icon
+        msgBox.setText(message)  # Main message
+        msgBox.setWindowTitle(title)  # Title of the window
+        msgBox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)  # Ok button
+        msgBox.setModal(False)  # Make it non-modal
+        msgBox.show()  # Show the message box
 
 
 # Thread Class for Updating GPP2323's tension (-32V ; +32V)
@@ -318,7 +328,8 @@ class GPP4323UpdateThread(QThread):
             self.gpp_4323.write(f'VSET1:0')
             self.gpp_4323.write(f'VSET2:{-self.tension}')
 
-    #########################################################################################
+
+#########################################################################################
 
 
 # Starts the interface
