@@ -1,11 +1,12 @@
 import nidaqmx
-from nidaqmx.constants import TerminalConfiguration, AcquisitionType
 import sys
 from PyQt6 import QtCore, QtWidgets, uic
 from PyQt6.QtCore import QThread
-from PyQt6.QtWidgets import QApplication, QMainWindow
 import pyvisa
-import traceback
+import warnings
+
+# Ignores the ResourceWarnings made by PyVISA library
+warnings.simplefilter("ignore", ResourceWarning)
 
 # Load the UI file created with QT Designer
 Ui_MainWindow, QtBaseClass = uic.loadUiType("Interface_finale.ui")
@@ -63,6 +64,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.gpp_2323.write(f'VSET1:0')  # Sets the channel tension to 0V
             self.gpp_2323.write(f'VSET2:0')  # Sets the channel tension to 0V
             self.gpp_2323.write(f':ALLOUTOFF')  # Enables every channel
+            self.gpp_2323.close()
         if self.gpp_4323 is not None:
             self.gpp_4323.write(f'ISET1:0')  # Fixes the maximum current so we can have a tension
             self.gpp_4323.write(f'ISET2:0')  # Fixes the maximum current so we can have a tension
@@ -72,6 +74,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.gpp_4323.write(f'VSET3:0')  # Sets the channel tension to 0V
             self.gpp_4323.write(f'VSET4:0')  # Sets the channel tension to 0V
             self.gpp_4323.write(f':ALLOUTOFF')  # Enables every channel
+            self.gpp_4323.close()
         QtCore.QCoreApplication.instance().quit()
 
     #########################################################################################
@@ -121,6 +124,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         try:
             rm = pyvisa.ResourceManager()
             items = rm.list_resources()  # Lists the connected VISA devices
+            rm.close()
             self.comboBox_gpp_2323.clear()  # Clear existing items
             self.comboBox_gpp_2323.addItems(items)  # Add new items
 
@@ -133,6 +137,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.port_gpp_2323 = self.comboBox_gpp_2323.currentText()
             rm = pyvisa.ResourceManager()
             items = rm.list_resources()  # Lists the connected VISA devices
+            rm.close()
             if (not self.comboBox_gpp_2323.currentText() in items) or (
                     self.comboBox_gpp_2323.currentText() == ""):  # Checks if the device is connected
                 QtWidgets.QMessageBox.information(self, 'Error', 'Wrong choice')
@@ -171,6 +176,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         try:
             rm = pyvisa.ResourceManager()
             items = rm.list_resources()  # Lists the connected VISA devices
+            rm.close()
             self.comboBox_gpp_4323.clear()  # Clear existing items
             self.comboBox_gpp_4323.addItems(items)  # Add new items
 
@@ -183,6 +189,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.port_gpp_4323 = self.comboBox_gpp_4323.currentText()
             rm = pyvisa.ResourceManager()
             items = rm.list_resources()  # Lists the connected VISA devices
+            rm.close()
             if (not self.comboBox_gpp_4323.currentText() in items) or (
                     self.comboBox_gpp_4323.currentText() == ""):  # Checks if the device is connected
                 QtWidgets.QMessageBox.information(self, 'Error', 'Wrong choice')
@@ -316,13 +323,10 @@ class GPP4323UpdateThread(QThread):
 
 # Starts the interface
 def run_interface():
-    try:
-        app = QtWidgets.QApplication(sys.argv)  # Create a Qt application
-        window = MyWindow()  # Create an instance of MyWindow
-        window.show()  # Show the window
-        sys.exit(app.exec())  # Start the application event loop
-    except Exception as e:
-        QtWidgets.QMessageBox.information(self, 'Error', f"Run_interface returned : {e}")
+    app = QtWidgets.QApplication(sys.argv)  # Create a Qt application
+    window = MyWindow()  # Create an instance of MyWindow
+    window.show()  # Show the window
+    sys.exit(app.exec())  # Start the application event loop
 
 
 # Main function
