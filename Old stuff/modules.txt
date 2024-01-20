@@ -1,0 +1,9 @@
+pyvisa
+pyvisa-py
+zeroconf
+numpy
+pyqt6
+pyqtgraph
+nidaqmx
+psutil
+pyserial
