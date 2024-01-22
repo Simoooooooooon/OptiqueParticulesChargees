@@ -296,17 +296,16 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # Image part
 
     # Display the image
-    def displayImage(self, image):
+    def displayImage(self, np_image):
         """
         Function to display the image in the interface.
         Normalizes the values and updates the QPixmap with the new image.
 
         Args:
-        image (list): List of pixel values to be displayed.
+        image (numpy.ndarray): List of pixel values to be displayed.
         """
         try:
             pixels_number = self.spinBox_image_size.value()
-            np_image = np.array(image).reshape(pixels_number, pixels_number)
 
             # Normalise the values between 0 and 255
             min_val = np_image.min()
@@ -558,7 +557,7 @@ class SweepThread(QThread):
         image (pyqtSignal): Signal emitted with the image data once the sweep process is complete.
     """
     errorOccurred = QtCore.pyqtSignal(str)  # Signal to handle possible errors
-    image = QtCore.pyqtSignal(list)
+    image = QtCore.pyqtSignal(np.ndarray)
 
     def __init__(self, time_per_pixel, sampling_frequency, pixels_number, channel_lr, channel_ud, channel_read,
                  parent=None):
