@@ -5,8 +5,7 @@ from nidaqmx.stream_writers import AnalogMultiChannelWriter
 
 
 def Sweep(time_per_pixel, sampling_frequency, pixels_number, channel_lr, channel_ud, channel_read):
-
-    pixels_number+=2
+    pixels_number += 2
 
     # Converts microseconds to seconds
     time_per_pixel = time_per_pixel / 1000000
@@ -46,7 +45,7 @@ def Sweep(time_per_pixel, sampling_frequency, pixels_number, channel_lr, channel
 
         # Timing configuration
         write_task.timing.cfg_samp_clk_timing(rate=sampling_frequency, sample_mode=AcquisitionType.FINITE,
-                                        samps_per_chan=len(complete_horizontal_staircase))
+                                              samps_per_chan=len(complete_horizontal_staircase))
         read_task.timing.cfg_samp_clk_timing(rate=sampling_frequency, sample_mode=AcquisitionType.FINITE,
                                              samps_per_chan=total_samples_to_read)
 
@@ -77,14 +76,14 @@ def Sweep(time_per_pixel, sampling_frequency, pixels_number, channel_lr, channel
         write_task.stop()
         read_task.stop()
 
-
+        # If there is only one sample per pixel, we skip the averaging process
         if samples_per_step == 1:
 
             # To avoid weird behaviour we delete the first column and the first row of the image twice
             raw_data = [raw_data[i] for i in range(len(raw_data)) if (i % pixels_number != 0) and (i >= pixels_number)]
-            raw_data = [raw_data[i] for i in range(len(raw_data)) if
-                        (i % (pixels_number - 1) != 0) and (i >= (pixels_number - 1))]
+            raw_data = [raw_data[i] for i in range(len(raw_data)) if (i % (pixels_number - 1) != 0) and (i >= (pixels_number - 1))]
             return raw_data
+
         else:
             averaged_data = []
             i = 0
@@ -93,11 +92,25 @@ def Sweep(time_per_pixel, sampling_frequency, pixels_number, channel_lr, channel
                 avg = sum_elements / samples_per_step
                 averaged_data.append(avg)
                 i += samples_per_step
+
+            '''
+            Must try :
+            # Convert raw_data to a NumPy array for efficient processing
+            raw_data_array = np.array(raw_data)
+            
+            # Reshape the array so that each row contains samples_per_step elements
+            reshaped_data = raw_data_array.reshape(-1, samples_per_step)
+            
+            # Compute the mean along the second axis (axis=1) to average each group
+            averaged_data = np.mean(reshaped_data, axis=1)
+            '''
+
             # To avoid weird behaviour we delete the first column and the first row of the image twice
             averaged_data = [averaged_data[i] for i in range(len(averaged_data)) if
-                        (i % pixels_number != 0) and (i >= pixels_number)]
+                             (i % pixels_number != 0) and (i >= pixels_number)]
             averaged_data = [averaged_data[i] for i in range(len(averaged_data)) if
-                        (i % (pixels_number - 1) != 0) and (i >= (pixels_number - 1))]
+                             (i % (pixels_number - 1) != 0) and (i >= (pixels_number - 1))]
+
             return averaged_data
 
 

@@ -10,7 +10,7 @@ import time
 import numpy as np
 from PIL import Image
 import json
-import math
+from math import ceil
 
 
 # Ignores the ResourceWarnings made by PyVISA library
@@ -22,10 +22,18 @@ Ui_MainWindow, QtBaseClass = uic.loadUiType("final.ui")
 
 # Main class for the interface
 class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
+    """
+    Main class for the Focused Ion Beam (FIB) control interface.
+    Inherits from QMainWindow and the Ui_MainWindow generated from Qt Designer.
+    """
+
     listChanged = QtCore.pyqtSignal(list)  # Signal to emit acquired data
 
     # Initialize the interface
     def __init__(self):
+        """
+        Initialize the interface and set up UI components and connections.
+        """
         super(MyWindow, self).__init__()  # Initialize the parent class
         self.setupUi(self)  # Load the UI
         self.setWindowTitle("Interface de pilotage du FIB")  # Set window title
@@ -71,6 +79,10 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # Function to quit the application
 
     def quit(self):
+        """
+        Function to quit the application safely.
+        Disconnects from the power supply if connected before exiting.
+        """
         if self.gpp_power_supply is not None:
             self.gpp_power_supply.disconnect()
         QtCore.QCoreApplication.instance().quit()
@@ -80,6 +92,12 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # Function to display the current available devices
     def populate_dev_combobox(self):
+        """
+        Populates the combobox with the names of National Instruments (NI) devices currently connected to the system.
+
+        This method queries the local NI system for all connected devices and updates the combobox with their names.
+        It is used to provide a selection of available NI devices for user interaction.
+        """
         try:
             system = nidaqmx.system.System.local()
             items = [device.name for device in system.devices]  # Lists the connected NI devices
@@ -91,6 +109,12 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # Connection to the NI Card and verification
     def connect_to_card(self):
+        """
+        Establishes a connection to the selected NI card and populates the corresponding comboboxes for analog input and output channels.
+
+        This method checks if the selected device from the combobox is currently connected. If so, it retrieves and lists
+        the available analog output and input channels of the selected NI device in their respective comboboxes.
+        """
         try:
             self.port_dev = self.comboBox_dev.currentText()
             system = nidaqmx.system.System.local()
@@ -102,10 +126,8 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             else:  # If the device is connected, we do this
                 self.port_dev = self.comboBox_dev.currentText()
                 device = nidaqmx.system.Device(self.port_dev)
-                ao_channels = [chan.name for chan in
-                               device.ao_physical_chans]  # Lists the available analog output channels
-                ai_channels = [chan.name for chan in
-                               device.ai_physical_chans]  # Lists the available analog input channels
+                ao_channels = [chan.name for chan in device.ao_physical_chans]  # Lists the available analog output channels
+                ai_channels = [chan.name for chan in device.ai_physical_chans]  # Lists the available analog input channels
                 self.comboBox_vs.clear()  # Clear existing items
                 self.comboBox_hs.clear()  # Clear existing items
                 self.comboBox_vs.addItems(ao_channels)  # Add new items
@@ -121,6 +143,13 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # Thread to display the current available devices because slow response
     def populate_gpp_4323_combobox(self):
+        """
+        Initiates a background thread to populate the GPP 4323 combobox with available device names.
+
+        This method starts a separate thread to retrieve the list of connected devices (specifically for GPP 4323) to
+        prevent the GUI from freezing during this potentially time-consuming operation. The retrieved device names are
+        then listed in the GPP 4323 combobox.
+        """
         try:
             self.population_thread = Population()
             self.population_thread.list.connect(self.send_to_GPP_comboBox)
@@ -131,58 +160,84 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # Function to display the list to the comboBoxes
     def send_to_GPP_comboBox(self, items):
+        """
+        Displays the list of connected VISA devices in the comboBox.
+
+        Args:
+        items (list): List of device names to be displayed in the comboBox.
+        """
         self.comboBox_gpp_4323.clear()  # Clear existing items
         self.comboBox_gpp_4323.addItems(items)  # Add new items
 
     # Connection to the gpp_4323 and verification
     def connect_to_gpp_4323(self):
+        """
+        Handles the connection to the selected GPP4323 power supply.
+        Validates the selection and updates the UI based on the connection status.
+        """
         try:
-            self.gpp_power_supply = PowerSupply(self.comboBox_gpp_4323.currentText())
-            error_checker = self.gpp_power_supply.connect()  # None if no error and "error message" otherwise
-            if error_checker is None:
-                self.brightness_slider.setEnabled(True)  # Enables the brightness slider
+            currentText = self.comboBox_gpp_4323.currentText()
+            if currentText == '':
+                self.Message('Error', f"Please select something")
             else:
-                self.Message('Error', f'Failed to connect to GPP4323 : {error_checker}')
+                self.gpp_power_supply = PowerSupply(currentText)
+
+                error_checker = self.gpp_power_supply.connect()  # None if no error and "error message" otherwise
+                if error_checker is None:
+                    self.brightness_slider.setEnabled(True)  # Enables the brightness slider
+                else:
+                    self.Message('Error', f'Failed to connect to GPP4323 : {error_checker}')
         except Exception as e:
             self.Message('Error', f"Connect_to_gpp_4323 function returned : {e}")
 
     # Connection help button
     def gpp_4323_help(self):
-        self.Message('Help',
-                     'Connect both CH1(-) and CH2(-) together and take your output between CH1(+) and CH2('
-                     '+).\nConnect the electron detector to CH4.')
+        """
+        Displays a help message regarding the connections for the GPP4323 power supply.
+        """
+        self.Message('Help', 'Connect both CH1(-) and CH2(-) together and take your output between CH1(+) and CH2().\nConnect the electron detector to CH4.')
 
     #########################################################################################
     # Sliders part
 
     # Updates the label as the user changes the slider
     def gpp_4323_brightness_slider_changed(self):
+        """
+        Updates the label to display the current brightness tension value based on the slider's position.
+        This function is called whenever the slider value changes.
+        """
         try:
             tension = self.brightness_slider.value()  # Gets the value of the slider
-            self.label_current_brightness.setText(
-                f'Brightness tension (V) : {str(tension)}')  # Shows to the user the current tension
+            self.label_current_brightness.setText(f'Brightness tension (V) : {str(tension)}')  # Shows to the user the current tension
         except Exception as e:
             self.Message('Error', f"Gpp_4323_brightness_slider_changed returned : {e}")
 
     # Updates the value only when the user release the slider
     def gpp_4323_brightness_slider_released(self):
+        """
+        Updates the brightness tension of the GPP power supply when the slider is released.
+        This function ensures that the power supply's tension is updated only when the user finishes adjusting the slider.
+        """
         try:
-            self.gpp_power_supply.set_tension(
-                self.brightness_slider.value())  # Gets the value of the slider and send it to the power supply
+            self.gpp_power_supply.set_tension(self.brightness_slider.value())  # Gets the value of the slider and send it to the power supply
         except Exception as e:
             self.Message('Error', f"Gpp_4323_brightness_slider_released returned : {e}")
 
     #########################################################################################
     # Sweep part
     def Sweep(self):
+        """
+        Function to start the Sweep operation.
+        Checks for valid configurations and starts the SweepThread and ProgressBarThread.
+        """
         if self.port_dev is None:
             self.Message('Error', f"Please connect to NI Card first")
         elif self.comboBox_hs.currentText() == self.comboBox_vs.currentText():
             self.Message('Error', f"Please choose different channels for horizontal and vertical sweep")
-        elif self.gpp_power_supply is not None:
+        elif self.gpp_power_supply is None:
             self.Message('Error', f"Please connect to GPP power supply first")
         elif self.spinBox_time_per_pixel.value() < 1000000/self.spinBox_sampling_frequency.value():
-            self.Message('Error', f"You must be at least have {math.ceil(1000000/self.spinBox_sampling_frequency.value())} µs per pixel")
+            self.Message('Error', f"You must be at least have {ceil(1000000/self.spinBox_sampling_frequency.value())} µs per pixel")
         else:
             try:
                 # Gets the values from the comboBoxes
@@ -194,8 +249,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 channel_read = self.comboBox_sensor.currentText()
 
                 # Sweep signal generation in a thread
-                self.sweep_thread = SweepThread(time_per_pixel, sampling_frequency, pixels_number, channel_lr,
-                                                channel_ud, channel_read)
+                self.sweep_thread = SweepThread(time_per_pixel, sampling_frequency, pixels_number, channel_lr, channel_ud, channel_read)
                 self.sweep_thread.errorOccurred.connect(self.handleSweepError)
                 self.sweep_thread.image.connect(self.displayImage)
                 self.sweep_thread.finished.connect(self.thread_cleanup)
@@ -212,10 +266,30 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # If an error occurred in the thread, we display it to the user
     def handleSweepError(self, error_message):
+        """
+        Displays an error message if an error occurs during the sweep process.
+
+        This method is connected to the `errorOccurred` signal of the SweepThread. It is triggered
+        when the SweepThread encounters an error, and it displays the error message using the
+        custom Message method of the MyWindow class.
+
+        Parameters:
+            error_message (str): The error message received from the SweepThread.
+        """
         self.Message('Error', f"Sweep function returned: {error_message}")
 
     # Update the progression bar
     def updateProgressBar(self, value):
+        """
+        Updates the progress bar's value during the sweep process.
+
+        This method is connected to the `progressUpdated` signal of the ProgressBar thread. It is
+        called periodically to update the progress bar on the UI to reflect the current progress of
+        the sweep operation.
+
+        Parameters:
+            value (int): The current progress value to set on the progress bar.
+        """
         self.progressBar_sweep.setValue(value)
 
     #########################################################################################
@@ -223,6 +297,13 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # Display the image
     def displayImage(self, image):
+        """
+        Function to display the image in the interface.
+        Normalizes the values and updates the QPixmap with the new image.
+
+        Args:
+        image (list): List of pixel values to be displayed.
+        """
         try:
             pixels_number = self.spinBox_image_size.value()
             np_image = np.array(image).reshape(pixels_number, pixels_number)
@@ -249,6 +330,10 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # Save the image
     def saveImage(self):
+        """
+        Function to save the current image displayed in the interface.
+        Opens a dialog to choose the file location and format.
+        """
         try:
             # Get the save name
             filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save Image", "",
@@ -263,6 +348,10 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     #########################################################################################
     # Config part
     def saveConfig(self):
+        """
+        Function to save the current configuration to a JSON file.
+        Extracts values from UI elements and writes them to 'config.json'.
+        """
         try:
             # Gets the values from the UI
             config = {
@@ -285,6 +374,10 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.Message('Error', f"Couldn't save config : {e}")
 
     def loadConfig(self):
+        """
+        Function to load configuration from a JSON file.
+        Reads 'config.json' and updates the UI elements with stored values.
+        """
         try:
             # Loads the json config file
             with open('config.json', 'r') as config_file:
@@ -314,6 +407,17 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # Error message that doesn't freeze the interface
     def Message(self, title, message):
+        """
+        Displays a message to the user in a non-modal message box.
+
+        This method is used throughout the MyWindow class to show various types of messages
+        (such as errors, information, etc.) without freezing the interface. It creates a
+        non-modal message box that does not block the rest of the UI while open.
+
+        Parameters:
+            title (str): The title of the message box.
+            message (str): The message to be displayed in the message box.
+        """
         # Create a non-modal message box
         msgBox = QtWidgets.QMessageBox(self)  # Message box
         msgBox.setIcon(QtWidgets.QMessageBox.Icon.Information)  # Icon
@@ -325,12 +429,26 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # Clean up the used thread resources
     def thread_cleanup(self):
+        """
+        Cleans up the resources used by finished threads.
+
+        This method is typically connected to the 'finished' signal of QThread objects. It ensures
+        that thread objects are deleted safely after their execution is complete, helping to free up
+        resources and prevent memory leaks.
+        """
         sender = self.sender()  # Retrieves the object that emitted the signal (in this case, the finished thread)
         if sender:
             sender.deleteLater()  # Safely deletes the thread object to free up resources
 
     # Calculation of the required time
     def required_time(self):
+        """
+        Calculates and displays the required time for the sweep operation.
+
+        This method calculates the total time required for the sweep operation based on the
+        time per pixel and the total number of pixels. It updates the UI to display this
+        information in a user-friendly format.
+        """
         time_per_pixel = self.spinBox_time_per_pixel.value() / 1000000   # µs to s
         pixels_number = self.spinBox_image_size.value() + 2
 
@@ -352,12 +470,37 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
 # Class for the GPP4323 power supply
 class PowerSupply:
+    """
+    A class to handle the operations related to the GPP4323 power supply.
+
+    This class provides functionalities to connect to, configure, and control the GPP4323 power supply
+    using the PyVISA library. It allows setting the tension, and disconnecting from the power supply.
+
+    Attributes:
+        port (str): The port name where the power supply is connected.
+        device (pyvisa.Resource): A PyVISA resource representing the power supply.
+    """
+
     def __init__(self, port):
+        """
+        Initializes the PowerSupply object with the specified port.
+
+        Parameters:
+            port (str): The port name where the power supply is connected.
+        """
         self.port = port
         self.device = None
 
-    # Connects and initialise the power supply
     def connect(self):
+        """
+        Connects to the power supply and initializes its settings.
+
+        This method establishes a connection to the power supply and sets initial current and voltage settings.
+        It also prints the device's identification string.
+
+        Returns:
+            Exception: Any exception raised during connection, if any.
+        """
         try:
             rm = pyvisa.ResourceManager()
             self.device = rm.open_resource(self.port)
@@ -374,13 +517,23 @@ class PowerSupply:
         except Exception as e:
             return e
 
-    # Sends to the power supply the requested tension
     def set_tension(self, tension):
-        self.device.write(f'VSET4:{tension}')
+        """
+        Sets the tension of the power supply to the specified value.
 
-    # Disconnects the power supply
+        Parameters:
+            tension (float): The tension value to set on the power supply.
+        """
+        if self.device:
+            self.device.write(f'VSET4:{tension}')
+
     def disconnect(self):
-        if self.device is not None:
+        """
+        Disconnects the power supply and resets its settings.
+
+        This method turns off all outputs and closes the connection to the power supply.
+        """
+        if self.device:
             self.device.write(f'ISET1:0')
             self.device.write(f'ISET2:0')
             self.device.write(f'ISET4:0')
@@ -394,11 +547,33 @@ class PowerSupply:
 
 # Thread class for sweep
 class SweepThread(QThread):
+    """
+    A QThread subclass for handling the sweep signal generation in a separate thread.
+
+    This thread class is responsible for running the sweep signal generation process in the background,
+    thereby keeping the main UI responsive. It communicates the results and errors through signals.
+
+    Attributes:
+        errorOccurred (pyqtSignal): Signal emitted when an error occurs in the thread.
+        image (pyqtSignal): Signal emitted with the image data once the sweep process is complete.
+    """
     errorOccurred = QtCore.pyqtSignal(str)  # Signal to handle possible errors
     image = QtCore.pyqtSignal(list)
 
     def __init__(self, time_per_pixel, sampling_frequency, pixels_number, channel_lr, channel_ud, channel_read,
                  parent=None):
+        """
+        Initializes the SweepThread with necessary parameters for the sweep process.
+
+        Parameters:
+            time_per_pixel (float): Time spent per pixel in the scan.
+            sampling_frequency (int): The sampling frequency for the scan.
+            pixels_number (int): Number of pixels in each dimension of the scan.
+            channel_lr (str): The channel used for left-right movement.
+            channel_ud (str): The channel used for up-down movement.
+            channel_read (str): The channel used for reading the data.
+            parent (QObject): The parent object for this thread, if any.
+        """
         super(SweepThread, self).__init__(parent)  # Initialize the QThread parent class
         self.time_per_pixel = time_per_pixel
         self.sampling_frequency = sampling_frequency
@@ -409,6 +584,12 @@ class SweepThread(QThread):
 
     # Get the list of pixels and send it back
     def run(self):
+        """
+        Executes the sweep operation in a separate thread.
+
+        This method is automatically called when the thread starts. It runs the sweep process and emits
+        the resulting image data or any errors encountered.
+        """
         try:
             # Sweep signal generation from "Sweep.py"
             data = Sweep.Sweep(self.time_per_pixel, self.sampling_frequency, self.pixels_number, self.channel_lr,
@@ -435,9 +616,24 @@ class Population(QThread):
 
 # Thread class for the progress bar
 class ProgressBar(QThread):
+    """
+    A QThread subclass for populating the list of connected GPIB devices.
+
+    This thread class is used to asynchronously retrieve and emit the list of connected GPIB devices,
+    ensuring that the UI remains responsive during this potentially time-consuming process.
+
+    Attributes:
+        list (pyqtSignal): Signal emitted with the list of connected GPIB devices.
+    """
     progressUpdated = pyqtSignal(int)  # Signal to update the progression
 
     def __init__(self, time_per_pixel, pixels_number, parent=None):
+        """
+        Initializes the Population thread.
+
+        Parameters:
+            parent (QObject): The parent object for this thread, if any.
+        """
         super(ProgressBar, self).__init__(parent)
         time_per_pixel = time_per_pixel / 1000000
         self.total_time = time_per_pixel * (pixels_number +2) ** 2
@@ -445,6 +641,12 @@ class ProgressBar(QThread):
 
     # Calculates the percentage progress and send it back
     def run(self):
+        """
+        Executes the device population process in a separate thread.
+
+        This method is automatically called when the thread starts. It retrieves the list of connected
+        GPIB devices and emits it through the 'list' signal.
+        """
         start_time = time.time()
         while time.time() - start_time < self.total_time:
             elapsed_time = time.time() - start_time
@@ -459,6 +661,9 @@ class ProgressBar(QThread):
 
 # Starts the interface
 def run_interface():
+    """
+    Starts the Qt application and shows the main window.
+    """
     app = QtWidgets.QApplication(sys.argv)  # Create a Qt application
     window = MyWindow()  # Create an instance of MyWindow
     window.show()  # Show the window
