@@ -74,7 +74,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.required_time()
 
         # Initialize the image to black
-        self.displayImage(np.zeros(self.spinBox_image_size.value()**2, dtype=np.uint8))
+        self.displayImage(np.zeros(self.spinBox_image_size.value()**2, dtype=np.uint8).reshape(self.spinBox_image_size.value(), self.spinBox_image_size.value()))
 
     # Function to quit the application
 
@@ -335,8 +335,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         """
         try:
             # Get the save name
-            filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save Image", "",
-                                                                "PNG Files (*.png);;JPEG Files (*.jpeg);;All Files (*)")
+            filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save Image", "", "PNG Files (*.png);;JPEG Files (*.jpeg);;BMP Files (*.bmp);;TIFF Files (*.tiff);;All Files (*)")
             if filename:
                 # Save the image currently displayed on the QPixmap
                 img = Image.fromarray(self.currentImage)
@@ -541,6 +540,7 @@ class PowerSupply:
             self.device.write(f'VSET3:0')
             self.device.write(f'VSET4:0')
             self.device.write(f':ALLOUTOFF')
+            time.sleep(0.1)
             self.device.close()
 
 
