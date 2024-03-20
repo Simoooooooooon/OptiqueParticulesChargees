@@ -1,14 +1,9 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Feb 11 00:39:40 2024
-
-@author: Thomas
-"""
 import pyvisa
 import time
 
+
 ###############################################################################
-#Class
+# Class
 
 class PowerSupply:
     """
@@ -85,8 +80,10 @@ class PowerSupply:
             self.device.write(f':ALLOUTOFF')
             time.sleep(0.1)
             self.device.close()
+
+
 ###############################################################################
-#Functions
+# Functions
 def ResourcesList():
     """
     Lists the available VISA resources.

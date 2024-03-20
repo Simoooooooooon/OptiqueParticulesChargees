@@ -1,6 +1,7 @@
 import numpy as np
 from Modules_FIB import Ni_Dependencies as NID
 
+
 def Scanning_Rise(time_per_pixel, sampling_frequency, pixels_number, channel_lr, channel_ud, channel_read):
     """
     Generates and reads scanning signals for a Focused Ion Beam (FIB) system.
@@ -55,42 +56,44 @@ def Scanning_Rise(time_per_pixel, sampling_frequency, pixels_number, channel_lr,
                                    samples_per_step * pixels_number)
 
     # Write both signal in one task and read with another
-    write_task,read_task = NID.configure_tasks(channel_lr, channel_ud, channel_read, min_tension, max_tension, 
-                        sampling_frequency, complete_horizontal_staircase, total_samples_to_read,
-                        vertical_staircase)
-    print(write_task,read_task)
+    write_task, read_task = NID.configure_tasks(channel_lr, channel_ud, channel_read, min_tension, max_tension,
+                                                sampling_frequency, complete_horizontal_staircase,
+                                                total_samples_to_read,
+                                                vertical_staircase)
+    print(write_task, read_task)
     # Structure datas to write
     data_to_write = np.array([complete_horizontal_staircase, vertical_staircase])
-    
+
     # Create a StreamWriter for the analog outputs
-    raw_data=NID.write_and_read(write_task, read_task, data_to_write,total_samples_to_read, timeout)
+    raw_data = NID.write_and_read(write_task, read_task, data_to_write, total_samples_to_read, timeout)
     # Stop the tasks
 
     # If there is only one sample per pixel, we skip the averaging process
     if samples_per_step == 1:
 
-            # Reshape to a numpy 2D array (pixels_number x pixels_number)
-            image_array = np.array(raw_data).reshape(pixels_number, pixels_number)
+        # Reshape to a numpy 2D array (pixels_number x pixels_number)
+        image_array = np.array(raw_data).reshape(pixels_number, pixels_number)
 
     else:
 
-            # Convert raw_data to a NumPy array for efficient processing
-            raw_data_array = np.array(raw_data)
+        # Convert raw_data to a NumPy array for efficient processing
+        raw_data_array = np.array(raw_data)
 
-            # Reshape the array so that each row contains samples_per_step elements
-            reshaped_data = raw_data_array.reshape(-1, samples_per_step)
+        # Reshape the array so that each row contains samples_per_step elements
+        reshaped_data = raw_data_array.reshape(-1, samples_per_step)
 
-            # Compute the mean along the second axis (axis=1) to average each group
-            averaged_data = np.mean(reshaped_data, axis=1)
+        # Compute the mean along the second axis (axis=1) to average each group
+        averaged_data = np.mean(reshaped_data, axis=1)
 
-            # Reshape to a 2D array (pixels_number x pixels_number)
-            image_array = averaged_data.reshape(pixels_number, pixels_number)
+        # Reshape to a 2D array (pixels_number x pixels_number)
+        image_array = averaged_data.reshape(pixels_number, pixels_number)
 
-        # To avoid weird behaviour we delete the first column and the first row of the image twice
+    # To avoid weird behaviour we delete the first column and the first row of the image twice
     image_array = image_array[1:, 1:]
     image_array = image_array[1:, 1:]
-    NID.close(write_task,read_task)
+    NID.close(write_task, read_task)
     return image_array
+
 
 def Scanning_Triangle(time_per_pixel, sampling_frequency, pixels_number, channel_lr, channel_ud, channel_read):
     """
@@ -138,52 +141,52 @@ def Scanning_Triangle(time_per_pixel, sampling_frequency, pixels_number, channel
     NID.initial_voltage_setting(min_tension, max_tension, channel_ud)
 
     # Generating the staircase signal for left-right scanning (repeated "pixels_number" times)
-    horizontal_staircase = np.repeat(np.append(np.linspace(min_tension, max_tension, pixels_number), 
-                                     np.linspace(max_tension, min_tension, pixels_number)), samples_per_step)
-    complete_horizontal_staircase = np.tile(horizontal_staircase, pixels_number//2)                                
-                                                                   
-
+    horizontal_staircase = np.repeat(np.append(np.linspace(min_tension, max_tension, pixels_number),
+                                               np.linspace(max_tension, min_tension, pixels_number)), samples_per_step)
+    complete_horizontal_staircase = np.tile(horizontal_staircase, pixels_number // 2)
 
     # Generating the staircase signal for top-down scanning (unique for the entire image)
     vertical_staircase = np.repeat(np.linspace(max_tension, min_tension, pixels_number),
                                    samples_per_step * pixels_number)
-    
+
     # Write both signal in one task and read with another
-    write_task,read_task = NID.configure_tasks(channel_lr, channel_ud, channel_read, min_tension, max_tension, 
-                        sampling_frequency, complete_horizontal_staircase, total_samples_to_read,
-                        vertical_staircase)
-    
+    write_task, read_task = NID.configure_tasks(channel_lr, channel_ud, channel_read, min_tension, max_tension,
+                                                sampling_frequency, complete_horizontal_staircase,
+                                                total_samples_to_read,
+                                                vertical_staircase)
+
     # Structure datas to write
     data_to_write = np.array([complete_horizontal_staircase, vertical_staircase])
     # Create a StreamWriter for the analog outputs
-    raw_data=NID.write_and_read(write_task, read_task, data_to_write,total_samples_to_read, timeout)
+    raw_data = NID.write_and_read(write_task, read_task, data_to_write, total_samples_to_read, timeout)
 
     # If there is only one sample per pixel, we skip the averaging process
     if samples_per_step == 1:
 
-            # Reshape to a numpy 2D array (pixels_number x pixels_number)
-            image_array = np.array(raw_data).reshape(pixels_number, pixels_number)
+        # Reshape to a numpy 2D array (pixels_number x pixels_number)
+        image_array = np.array(raw_data).reshape(pixels_number, pixels_number)
 
     else:
 
-            # Convert raw_data to a NumPy array for efficient processing
-            raw_data_array = np.array(raw_data)
+        # Convert raw_data to a NumPy array for efficient processing
+        raw_data_array = np.array(raw_data)
 
-            # Reshape the array so that each row contains samples_per_step elements
-            reshaped_data = raw_data_array.reshape(-1, samples_per_step)
+        # Reshape the array so that each row contains samples_per_step elements
+        reshaped_data = raw_data_array.reshape(-1, samples_per_step)
 
-            # Compute the mean along the second axis (axis=1) to average each group
-            averaged_data = np.mean(reshaped_data, axis=1)
+        # Compute the mean along the second axis (axis=1) to average each group
+        averaged_data = np.mean(reshaped_data, axis=1)
 
-            # Reshape to a 2D array (pixels_number x pixels_number)
-            image_array = averaged_data.reshape(pixels_number, pixels_number)
+        # Reshape to a 2D array (pixels_number x pixels_number)
+        image_array = averaged_data.reshape(pixels_number, pixels_number)
 
-        # To avoid weird behaviour we delete the first column and the first row of the image twice
+    # To avoid weird behaviour we delete the first column and the first row of the image twice
     image_array = image_array[1:, 1:]
     image_array = image_array[1:, 1:]
-    NID.close(write_task,read_task)
+    NID.close(write_task, read_task)
     return image_array
-    
+
+
 def VideoStair(time_per_pixel, sampling_frequency, pixels_number):
     """
     Generate staircase signals for video scanning.
@@ -204,35 +207,36 @@ def VideoStair(time_per_pixel, sampling_frequency, pixels_number):
             - vertical_staircase: The staircase signal for vertical scanning.
 
     """
-    
+
     # We have to take 2 more lines and columns because the acquisition isn't really synchronised at first
     pixels_number += 2
-    
+
     # Converts microseconds to seconds
     time_per_pixel = time_per_pixel / 1000000
-    
+
     # Number of samples per step/pixel
     samples_per_step = int(time_per_pixel * sampling_frequency)
-    
+
     # Configuring the voltages for the staircases
     min_tension = -10
     max_tension = 10
-    
+
     # Generating the staircase signal for left-right scanning (repeated "pixels_number" times)
     horizontal_staircase = np.repeat(np.linspace(min_tension, max_tension, pixels_number), samples_per_step)
     complete_horizontal_staircase = np.tile(horizontal_staircase, pixels_number)
-    
+
     # Generating the staircase signal for top-down scanning (unique for the entire image)
     vertical_staircase = np.repeat(np.linspace(max_tension, min_tension, pixels_number),
-                               samples_per_step * pixels_number)
-    
+                                   samples_per_step * pixels_number)
+
     data_to_write = np.array([complete_horizontal_staircase, vertical_staircase])
-    return data_to_write,complete_horizontal_staircase,vertical_staircase
-    
-def videoInitConf(channel_lr,channel_ud,channel_read,complete_horizontal_staircase,vertical_staircase,
-                  pixels_number,time_per_pixel,data_to_write,sampling_frequency):
+    return data_to_write, complete_horizontal_staircase, vertical_staircase
+
+
+def videoInitConf(channel_lr, channel_ud, channel_read, complete_horizontal_staircase, vertical_staircase,
+                  pixels_number, time_per_pixel, data_to_write, sampling_frequency):
     """
-    Initialize configuration for severalclose in time
+    Initialize configuration for several close in time
  scanning (video scanning).
 
     This function initializes the configuration for video scanning, including setting up tasks for
@@ -258,7 +262,7 @@ def videoInitConf(channel_lr,channel_ud,channel_read,complete_horizontal_stairca
             - read_task (nidaqmx.Task): The task configured for reading the input signal.
 
     """
-    
+
     # We have to take 2 more lines and columns because the acquisition isn't really synchronised at first
     pixels_number += 2
 
@@ -273,17 +277,19 @@ def videoInitConf(channel_lr,channel_ud,channel_read,complete_horizontal_stairca
     # Configuring the voltages for the staircases
     min_tension = -10
     max_tension = 10
-    
+
     NID.initial_voltage_setting(min_tension, max_tension, channel_ud)
-    write_task,read_task=NID.configure_tasks(channel_lr, channel_ud, channel_read, min_tension, max_tension, 
-                        sampling_frequency, complete_horizontal_staircase, total_samples_to_read,
-                        vertical_staircase)
-    
-    NID.writer(write_task,data_to_write)
-    
-    return samples_per_step,total_samples_to_read,timeout,write_task,read_task
-    
-def videoGo(pixels_number,write_task,read_task,samples_per_step,total_samples_to_read,timeout):
+    write_task, read_task = NID.configure_tasks(channel_lr, channel_ud, channel_read, min_tension, max_tension,
+                                                sampling_frequency, complete_horizontal_staircase,
+                                                total_samples_to_read,
+                                                vertical_staircase)
+
+    NID.writer(write_task, data_to_write)
+
+    return samples_per_step, total_samples_to_read, timeout, write_task, read_task
+
+
+def videoGo(pixels_number, write_task, read_task, total_samples_to_read, timeout):
     """
     Start video scanning process.
 
@@ -294,7 +300,6 @@ def videoGo(pixels_number,write_task,read_task,samples_per_step,total_samples_to
         pixels_number (int): The number of pixels in one dimension of the image.
         write_task (nidaqmx.Task): The task configured for writing scanning signals.
         read_task (nidaqmx.Task): The task configured for reading the input signal.
-        samples_per_step (int): The number of samples per step/pixel.
         total_samples_to_read (int): The total number of samples to read during data acquisition.
         timeout (float): The maximum timeout for data acquisition, in seconds.
 
@@ -302,18 +307,15 @@ def videoGo(pixels_number,write_task,read_task,samples_per_step,total_samples_to
         numpy.array: The image array containing the acquired data.
     """
     # We have to take 2 more lines and columns because the acquisition isn't really synchronised at first    
-    pixels_number+=2
-    
-    
-    raw_data = NID.quickwrite_and_read(write_task, read_task,total_samples_to_read, timeout)
-    
+    pixels_number += 2
+
+    raw_data = NID.quick_write_and_read(write_task, read_task, total_samples_to_read, timeout)
+
     # If there is only one sample per pixel, we skip the averaging process
 
     image_array = np.array(raw_data).reshape(pixels_number, pixels_number)
 
     image_array = image_array[1:, 1:]
     image_array = image_array[1:, 1:]
-    
-    
+
     return image_array
-    

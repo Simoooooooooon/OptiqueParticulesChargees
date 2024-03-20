@@ -3,17 +3,16 @@ from PyQt6 import QtCore, QtWidgets, uic
 from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtCore import QThread, pyqtSignal, Qt, QTimer
 import warnings
-from Modules_FIB import ImageProcessing as ImPr #Module for Image Processing, used in the Image part
-from Modules_FIB import Scanning #Module for Scanning & acquisition, use the Ni_Dependencies module 
-from Modules_FIB import Ni_Dependencies as NID #Module for ni Dependencies
-from Modules_FIB import Visa_Dependencies as VID #Module for Visa Dependencies (unfinished)
+from Modules_FIB import ImageProcessing as ImPr  # Module for Image Processing, used in the Image part
+from Modules_FIB import Scanning  # Module for Scanning & acquisition, use the Ni_Dependencies module
+from Modules_FIB import Ni_Dependencies as NID  # Module for ni Dependencies
+from Modules_FIB import Visa_Dependencies as VID  # Module for Visa Dependencies (unfinished)
 import time
 import pyvisa
 import numpy as np
 from PIL import Image
 import json
 from math import ceil
-import numpy as np
 
 # Ignores the ResourceWarnings made by PyVISA library
 warnings.simplefilter("ignore", ResourceWarning)
@@ -50,11 +49,11 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.pushButton_save_image.clicked.connect(self.saveImage)
         self.pushButton_load_config.clicked.connect(self.loadConfig)
         self.pushButton_save_config.clicked.connect(self.saveConfig)
-        
+
         # Continuous acquisition part
         self.pushButton_video.clicked.connect(self.togglevideo)
         self.video_in_progress = False
-        self.timer=QTimer()
+        self.timer = QTimer()
         self.timer.timeout.connect(self.Scanningcontinue)
         # Connect sliders to their respective functions
         self.brightness_slider.valueChanged.connect(self.gpp_4323_brightness_slider_changed)
@@ -63,7 +62,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # Ensure required time recalculation after modification
         self.spinBox_time_per_pixel.valueChanged.connect(self.required_time)
         self.spinBox_image_size.valueChanged.connect(self.required_time)
-        
+
         # Initialize instance variables
         self.port_dev = None
         self.gpp_power_supply = None
@@ -80,9 +79,10 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.required_time()
 
         # Initialize the image to black
-        self.displayImage(np.zeros(self.spinBox_image_size.value()**2, dtype=np.uint8).reshape(self.spinBox_image_size.value(), self.spinBox_image_size.value()))
-        
-        
+        self.displayImage(
+            np.zeros(self.spinBox_image_size.value() ** 2, dtype=np.uint8).reshape(self.spinBox_image_size.value(),
+                                                                                   self.spinBox_image_size.value()))
+
     # Function to quit the application
 
     def quit(self):
@@ -96,8 +96,6 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     #########################################################################################
 
-        
-        
     # NI connection part
 
     # Function to display the current available devices
@@ -136,8 +134,10 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             else:  # If the device is connected, we do this
                 self.port_dev = self.comboBox_dev.currentText()
                 device = NID.Ni_Cards_Device(self.port_dev)
-                ao_channels = [chan.name for chan in device.ao_physical_chans]  # Lists the available analog output channels
-                ai_channels = [chan.name for chan in device.ai_physical_chans]  # Lists the available analog input channels
+                ao_channels = [chan.name for chan in
+                               device.ao_physical_chans]  # Lists the available analog output channels
+                ai_channels = [chan.name for chan in
+                               device.ai_physical_chans]  # Lists the available analog input channels
                 self.comboBox_vs.clear()  # Clear existing items
                 self.comboBox_hs.clear()  # Clear existing items
                 self.comboBox_vs.addItems(ao_channels)  # Add new items
@@ -205,7 +205,8 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         """
         Displays a help message regarding the connections for the GPP4323 power supply.
         """
-        self.Message('Help', 'Connect both CH1(-) and CH2(-) together and take your output between CH1(+) and CH2().\nConnect the electron detector to CH4.')
+        self.Message('Help',
+                     'Connect both CH1(-) and CH2(-) together and take your output between CH1(+) and CH2().\nConnect the electron detector to CH4.')
 
     #########################################################################################
     # Sliders part
@@ -218,7 +219,8 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         """
         try:
             tension = self.brightness_slider.value()  # Gets the value of the slider
-            self.label_current_brightness.setText(f'Brightness tension (V) : {str(tension)}')  # Shows to the user the current tension
+            self.label_current_brightness.setText(
+                f'Brightness tension (V) : {str(tension)}')  # Shows to the user the current tension
         except Exception as e:
             self.Message('Error', f"Gpp_4323_brightness_slider_changed returned : {e}")
 
@@ -229,13 +231,14 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         This function ensures that the power supply's tension is updated only when the user finishes adjusting the slider.
         """
         try:
-            self.gpp_power_supply.set_tension(self.brightness_slider.value())  # Gets the value of the slider and send it to the power supply
+            self.gpp_power_supply.set_tension(
+                self.brightness_slider.value())  # Gets the value of the slider and send it to the power supply
         except Exception as e:
             self.Message('Error', f"Gpp_4323_brightness_slider_released returned : {e}")
 
     #########################################################################################
     # Sweep part
-    
+
     def Sweep(self):
         """
         Function to start the Sweep operation.
@@ -247,8 +250,9 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.Message('Error', f"Please choose different channels for horizontal and vertical sweep")
         elif self.gpp_power_supply is None:
             self.Message('Error', f"Please connect to GPP power supply first")
-        elif self.spinBox_time_per_pixel.value() < 1000000/self.spinBox_sampling_frequency.value():
-            self.Message('Error', f"You must be at least have {ceil(1000000/self.spinBox_sampling_frequency.value())} µs per pixel")
+        elif self.spinBox_time_per_pixel.value() < 1000000 / self.spinBox_sampling_frequency.value():
+            self.Message('Error',
+                         f"You must be at least have {ceil(1000000 / self.spinBox_sampling_frequency.value())} µs per pixel")
         else:
             try:
                 # Gets the values from the comboBoxes
@@ -260,7 +264,8 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 channel_read = self.comboBox_sensor.currentText()
                 mode = self.comboBox_Scanning_Mode.currentText()
                 # Sweep signal generation in a thread
-                self.sweep_thread = SweepThread(time_per_pixel, sampling_frequency, pixels_number, channel_lr, channel_ud, channel_read,mode)
+                self.sweep_thread = SweepThread(time_per_pixel, sampling_frequency, pixels_number, channel_lr,
+                                                channel_ud, channel_read, mode)
                 self.sweep_thread.errorOccurred.connect(self.handleSweepError)
                 self.sweep_thread.image.connect(self.displayImage)
                 self.sweep_thread.finished.connect(self.thread_cleanup)
@@ -301,10 +306,10 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             value (int): The current progress value to set on the progress bar.
         """
         self.progressBar_sweep.setValue(value)
-        
-     #########################################################################################
-     # Video Scanning part   
-     
+
+    #########################################################################################
+    # Video Scanning part
+
     def Scanningcontinue(self):
         """
     Continue scanning process.
@@ -320,15 +325,15 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         channel_lr = self.comboBox_hs.currentText()
         channel_ud = self.comboBox_vs.currentText()
         channel_read = self.comboBox_sensor.currentText()
-        
-        self.VideoRthread = VideoR_thread(self.total_samples_to_read,self.timeout,
-                                          self.write_task,self.read_task,
-                                          time_per_pixel, sampling_frequency, pixels_number, channel_lr, 
+
+        self.VideoRthread = VideoR_thread(self.total_samples_to_read, self.timeout,
+                                          self.write_task, self.read_task,
+                                          time_per_pixel, sampling_frequency, pixels_number, channel_lr,
                                           channel_ud, channel_read)
         self.VideoRthread.image.connect(self.quickdisplayImage)
         self.VideoRthread.finished.connect(self.thread_cleanup)
-        self.VideoRthread.start()   
-        
+        self.VideoRthread.start()
+
     def togglevideo(self):
         """
     Toggle video scanning.
@@ -342,9 +347,9 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if not self.video_in_progress:
             self.startvideo()
         else:
-            self.stopvideo(self.write_task,self.read_task)
-            self.quickdisplayImage(np.zeros(256**2, dtype=np.uint8).reshape(256, 256))
-            
+            self.stopvideo(self.write_task, self.read_task)
+            self.quickdisplayImage(np.zeros(256 ** 2, dtype=np.uint8).reshape(256, 256))
+
     def startvideo(self):
         """
     Start video scanning process.
@@ -362,16 +367,19 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         channel_ud = self.comboBox_vs.currentText()
         channel_read = self.comboBox_sensor.currentText()
         self.video_in_progress = True
-        data_to_write,complete_horizontal_staircase,vertical_staircase=Scanning.VideoStair(time_per_pixel, sampling_frequency, pixels_number)
-       
-        self.samples_per_step,self.total_samples_to_read,self.timeout,self.write_task,self.read_task=Scanning.videoInitConf(channel_lr,channel_ud,channel_read,complete_horizontal_staircase,vertical_staircase,
-                         pixels_number,time_per_pixel,data_to_write,sampling_frequency)
-        
+        data_to_write, complete_horizontal_staircase, vertical_staircase = Scanning.VideoStair(time_per_pixel,
+                                                                                               sampling_frequency,
+                                                                                               pixels_number)
+
+        self.samples_per_step, self.total_samples_to_read, self.timeout, self.write_task, self.read_task = Scanning.videoInitConf(
+            channel_lr, channel_ud, channel_read, complete_horizontal_staircase, vertical_staircase,
+            pixels_number, time_per_pixel, data_to_write, sampling_frequency)
+
         self.pushButton_video.setText('Arrêter')
-        self.timer.start(Cadence)   
+        self.timer.start(Cadence)
         self.Scanningcontinue()
-        
-    def stopvideo(self,write_task,read_task):
+
+    def stopvideo(self, write_task, read_task):
         """
     Stop video scanning process.
 
@@ -386,10 +394,11 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         """
         self.video_in_progress = False
         self.pushButton_video.setText('Lancer')
-        NID.close(self.write_task,self.read_task)
-        self.timer.stop()         
-        
-    #########################################################################################
+        NID.close(self.write_task, self.read_task)
+        self.timer.stop()
+
+        #########################################################################################
+
     # Image part
 
     # Display the image
@@ -403,18 +412,18 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         """
         try:
             if self.video_in_progress == True:
-                pixels_number=256
-            else :
+                pixels_number = 256
+            else:
                 pixels_number = self.spinBox_image_size.value()
-            
+
             scanning_mode = self.comboBox_Scanning_Mode.currentText()
             # Normalise the values between 0 and 255
-            np_image_norm=ImPr.normalize(np_image)
-            if scanning_mode=="Triangle":
-                np_image_norm=ImPr.triangle_scanning(np_image_norm,pixels_number)
-            
-            if  self.video_in_progress == False:
-                self.currentImage = np_image_norm   # Useful to save the image
+            np_image_norm = ImPr.normalize(np_image)
+            if scanning_mode == "Triangle":
+                np_image_norm = ImPr.triangle_scanning(np_image_norm, pixels_number)
+
+            if self.video_in_progress == False:
+                self.currentImage = np_image_norm  # Useful to save the image
 
             stride = pixels_number  # Number of bytes per line for a grayscale image
             qImage = QImage(np_image_norm.data, pixels_number, pixels_number, stride, QImage.Format.Format_Grayscale8)
@@ -436,10 +445,10 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         image (numpy.ndarray): List of pixel values to be displayed.
         """
         try:
-            
-            pixels_number=256
+
+            pixels_number = 256
             # Normalise the values between 0 and 255
-            np_image_norm=ImPr.normalize(np_image)
+            np_image_norm = ImPr.normalize(np_image)
             stride = pixels_number  # Number of bytes per line for a grayscale image
             qImage = QImage(np_image_norm.data, pixels_number, pixels_number, stride, QImage.Format.Format_Grayscale8)
             pixmap = QPixmap.fromImage(qImage)
@@ -451,9 +460,6 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         except Exception as e:
             self.Message('Error', f" Couldn't display the image : {e}")
 
-
-
-
     # Save the image
     def saveImage(self):
         """
@@ -462,7 +468,8 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         """
         try:
             # Get the save name
-            filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save Image", "", "PNG Files (*.png);;JPEG Files (*.jpeg);;BMP Files (*.bmp);;TIFF Files (*.tiff);;All Files (*)")
+            filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save Image", "",
+                                                                "PNG Files (*.png);;JPEG Files (*.jpeg);;BMP Files (*.bmp);;TIFF Files (*.tiff);;All Files (*)")
             if filename:
                 # Save the image currently displayed on the QPixmap
                 img = Image.fromarray(self.currentImage)
@@ -574,7 +581,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         time per pixel and the total number of pixels. It updates the UI to display this
         information in a user-friendly format.
         """
-        time_per_pixel = self.spinBox_time_per_pixel.value() / 1000000   # µs to s
+        time_per_pixel = self.spinBox_time_per_pixel.value() / 1000000  # µs to s
         pixels_number = self.spinBox_image_size.value() + 2
 
         # Change the display format to minutes if there are more than 60 seconds required
@@ -586,7 +593,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         else:
             result_str = f"{minutes}mn {remaining_seconds}s"
 
-        self.label_time.setText(f"Acquisition time : {result_str}")   # Write the required time on the UI
+        self.label_time.setText(f"Acquisition time : {result_str}")  # Write the required time on the UI
 
 
 #########################################################################################
@@ -666,6 +673,8 @@ class PowerSupply:
             self.device.write(f':ALLOUTOFF')
             time.sleep(0.1)
             self.device.close()
+
+
 # Thread class for sweep
 class SweepThread(QThread):
     """
@@ -681,7 +690,7 @@ class SweepThread(QThread):
     errorOccurred = QtCore.pyqtSignal(str)  # Signal to handle possible errors
     image = QtCore.pyqtSignal(np.ndarray)
 
-    def __init__(self, time_per_pixel, sampling_frequency, pixels_number, channel_lr, channel_ud, channel_read,mode,
+    def __init__(self, time_per_pixel, sampling_frequency, pixels_number, channel_lr, channel_ud, channel_read, mode,
                  parent=None):
         """
         Initializes the SweepThread with necessary parameters for the sweep process.
@@ -702,7 +711,7 @@ class SweepThread(QThread):
         self.channel_lr = channel_lr
         self.channel_ud = channel_ud
         self.channel_read = channel_read
-        self.mode=mode
+        self.mode = mode
 
     # Get the list of pixels and send it back
     def run(self):
@@ -714,18 +723,21 @@ class SweepThread(QThread):
         """
         try:
             # Scanning signal generation from "Scanning.py"
-            if self.mode=="Triangle" : 
-                data = Scanning.Scanning_Triangle(self.time_per_pixel, self.sampling_frequency, self.pixels_number, self.channel_lr,
-                               self.channel_ud, self.channel_read)
+            if self.mode == "Triangle":
+                data = Scanning.Scanning_Triangle(self.time_per_pixel, self.sampling_frequency, self.pixels_number,
+                                                  self.channel_lr,
+                                                  self.channel_ud, self.channel_read)
             else:
-                data = Scanning.Scanning_Rise(self.time_per_pixel, self.sampling_frequency, self.pixels_number, self.channel_lr,
-                                   self.channel_ud, self.channel_read)
+                data = Scanning.Scanning_Rise(self.time_per_pixel, self.sampling_frequency, self.pixels_number,
+                                              self.channel_lr,
+                                              self.channel_ud, self.channel_read)
             self.image.emit(data)
         except Exception as e:
             self.errorOccurred.emit(str(e))
-            
- # Thread class for close in time acquisition (video scanning)    
-class VideoR_thread (QThread):
+
+
+# Thread class for close in time acquisition (video scanning)
+class VideoR_thread(QThread):
     """
     A QThread subclass for handling the VideoR_thread signal generation in a separate thread.
 
@@ -736,12 +748,12 @@ class VideoR_thread (QThread):
         errorOccurred (pyqtSignal): Signal emitted when an error occurs in the thread.
         image (pyqtSignal): Signal emitted with the image data once the scanning process is complete.
     """
-    errorOccurred = QtCore.pyqtSignal(str) 
+    errorOccurred = QtCore.pyqtSignal(str)
     image = QtCore.pyqtSignal(np.ndarray)
-    
-    def __init__(self,total_samples_to_read,timeout,write_task,read_task,time_per_pixel,
-                 sampling_frequency, pixels_number, channel_lr, channel_ud, channel_read,parent=None):
-        
+
+    def __init__(self, total_samples_to_read, timeout, write_task, read_task, time_per_pixel,
+                 sampling_frequency, pixels_number, channel_lr, channel_ud, channel_read, parent=None):
+
         super(VideoR_thread, self).__init__(parent)
         self.time_per_pixel = time_per_pixel
         self.sampling_frequency = sampling_frequency
@@ -749,18 +761,20 @@ class VideoR_thread (QThread):
         self.channel_lr = channel_lr
         self.channel_ud = channel_ud
         self.channel_read = channel_read
-        self.total_samples_to_read=total_samples_to_read
-        self.timeout=timeout
-        self.write_task=write_task
-        self.read_task=read_task
+        self.total_samples_to_read = total_samples_to_read
+        self.timeout = timeout
+        self.write_task = write_task
+        self.read_task = read_task
         self.samples_per_step = int(time_per_pixel * sampling_frequency)
-         
+
     def run(self):
         try:
-            data=Scanning.videoGo(self.pixels_number,self.write_task,self.read_task,self.samples_per_step,self.total_samples_to_read,self.timeout)
+            data = Scanning.videoGo(self.pixels_number, self.write_task, self.read_task,
+                                    self.total_samples_to_read, self.timeout)
             self.image.emit(data)
         except Exception as e:
             self.errorOccurred.emit(str(e))
+
 
 # Thread class for GPP ComboBox population
 class Population(QThread):
@@ -771,7 +785,7 @@ class Population(QThread):
 
     # Get the list of connected devices and send it back
     def run(self):
-        items = VID.ResourcesList()  
+        items = VID.ResourcesList()
         self.list.emit(items)
 
 
@@ -797,7 +811,7 @@ class ProgressBar(QThread):
         """
         super(ProgressBar, self).__init__(parent)
         time_per_pixel = time_per_pixel / 1000000
-        self.total_time = time_per_pixel * (pixels_number +2) ** 2
+        self.total_time = time_per_pixel * (pixels_number + 2) ** 2
         self.interval = time_per_pixel  # Update interval
 
     # Calculates the percentage progress and send it back
@@ -815,7 +829,6 @@ class ProgressBar(QThread):
             self.progressUpdated.emit(progress)
             time.sleep(self.interval)  # Wait for the next update
         self.progressUpdated.emit(100)
-        
 
 
 #########################################################################################
@@ -830,7 +843,7 @@ def run_interface():
     window = MyWindow()  # Create an instance of MyWindow
     window.show()  # Show the window
     sys.exit(app.exec())  # Start the application event loop
-    
+
 
 # Main function
 if __name__ == '__main__':

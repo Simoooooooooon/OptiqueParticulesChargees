@@ -1,13 +1,7 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Feb 10 23:29:55 2024
-
-@author: Thomas
-"""
-
 import nidaqmx
 from nidaqmx.constants import AcquisitionType, TerminalConfiguration, Edge
 from nidaqmx.stream_writers import AnalogMultiChannelWriter
+
 
 # Elementary ni functions
 ###############################################################################
@@ -26,7 +20,6 @@ def Ni_Cards_System():
     return nidaqmx.system.System.local()
 
 
-
 def Ni_Cards_Device(port_dev):
     """
     Retrieve information about a specific NI DAQmx device.
@@ -40,30 +33,28 @@ def Ni_Cards_Device(port_dev):
     Returns:
     nidaqmx.system.Device: An object representing the specified NI DAQmx device.
     """
-    
-    return nidaqmx.system.Device(port_dev)
 
+    return nidaqmx.system.Device(port_dev)
 
 
 def Reset_Card(port_dev):
     """
-   Reset an ni card.
+   Reset a NI card.
 
    Args:
        port_dev (string): The name of the card port.
- 
    """
-   
+
     try:
         device = nidaqmx.system.Device(port_dev)
         device.reset_device()
         print("reset success")
-                      
+
     except Exception as e:
         print("Error while card reset:", e)
-        
-        
-def close(write_task,read_task):
+
+
+def close(write_task, read_task):
     """
    Close nidaqmx tasks.
 
@@ -72,17 +63,15 @@ def close(write_task,read_task):
    Args:
        write_task (nidaqmx.Task): The task configured for writing scanning signals.
        read_task (nidaqmx.Task): The task configured for reading the input signal.
-
-
    """
-   
+
     read_task.close()
     write_task.close()
-   
-    
-# Tasks configuration ni functions
+
+
+# Tasks configuration NI functions
 ###############################################################################  
-  
+
 def initial_voltage_setting(min_tension, max_tension, channel_ud):
     """
     Configures the initial voltage for a given channel.
@@ -99,22 +88,22 @@ def initial_voltage_setting(min_tension, max_tension, channel_ud):
     Returns:
         None
 
-    """    
-    try :
+    """
+    try:
         with nidaqmx.Task() as init_task:
             init_task.ao_channels.add_ao_voltage_chan(channel_ud, min_val=min_tension, max_val=max_tension)
             init_task.write(max_tension)
             init_task.start()
             init_task.stop()
             init_task.close()
-        print("init success")
-            
-            
+        print("Init success")
+
+
     except Exception as e:
         print("Error while task init:", e)
 
 
-def configure_tasks(channel_lr, channel_ud, channel_read, min_tension, max_tension, 
+def configure_tasks(channel_lr, channel_ud, channel_read, min_tension, max_tension,
                     sampling_frequency, complete_horizontal_staircase, total_samples_to_read,
                     vertical_staircase):
     """
@@ -144,32 +133,32 @@ def configure_tasks(channel_lr, channel_ud, channel_read, min_tension, max_tensi
     try:
         write_task = nidaqmx.Task()
         read_task = nidaqmx.Task()
-        
+
         # Channels configuration
         write_task.ao_channels.add_ao_voltage_chan(channel_lr, min_val=min_tension, max_val=max_tension)
         write_task.ao_channels.add_ao_voltage_chan(channel_ud, min_val=min_tension, max_val=max_tension)
         read_task.ai_channels.add_ai_voltage_chan(channel_read, min_val=min_tension, max_val=max_tension,
                                                   terminal_config=TerminalConfiguration.DIFF)
-    
+
         # Timing configuration
         write_task.timing.cfg_samp_clk_timing(rate=sampling_frequency, sample_mode=AcquisitionType.FINITE,
                                               samps_per_chan=len(complete_horizontal_staircase))
         read_task.timing.cfg_samp_clk_timing(rate=sampling_frequency, sample_mode=AcquisitionType.FINITE,
                                              samps_per_chan=total_samples_to_read)
-    
+
         # Trigger the read task at the start of the write task
         read_trigger_source = '/' + channel_lr.split('/')[0] + '/ao/StartTrigger'
         read_task.triggers.start_trigger.cfg_dig_edge_start_trig(read_trigger_source, trigger_edge=Edge.RISING)
-        
+
         print("Configuration success")
-           
+
     except Exception as e:
         print("Error while task configuration:", e)
 
     return write_task, read_task
 
 
-def writer(write_task,data_to_write):
+def writer(write_task, data_to_write):
     """
    Prepare the Writer of an analog output channels.
 
@@ -180,20 +169,21 @@ def writer(write_task,data_to_write):
        data_to_write (numpy.array): The data to be written to the analog output channels.
 
    """
-    try :
+    try:
         # Create a StreamWriter for the analog outputs
         writer = AnalogMultiChannelWriter(write_task.out_stream)
-    
+
         # Write both signals at the same time
         writer.write_many_sample(data_to_write)
     except Exception as e:
-         print("Error while writer's definition", e)   
-         
-         
-# Writing & Reading ni functions
+        print("Error while writer's definition", e)
+
+    # Writing & Reading ni functions
+
+
 ###############################################################################
 
-def write_and_read(write_task, read_task, data_to_write,total_samples_to_read, timeout):
+def write_and_read(write_task, read_task, data_to_write, total_samples_to_read, timeout):
     """
    Writes scanning signals and reads the input signal simultaneously.
 
@@ -210,37 +200,36 @@ def write_and_read(write_task, read_task, data_to_write,total_samples_to_read, t
 
    Returns:
        numpy.array: The raw data read from the analog input channel.
-
    """
-    try :
+
+    try:
         # Create a StreamWriter for the analog outputs
         writer = AnalogMultiChannelWriter(write_task.out_stream)
-    
+
         # Write both signals at the same time
         writer.write_many_sample(data_to_write)
-    
+
         # Start the tasks
         read_task.start()
         write_task.start()
-    
+
         # Read the data for the entire image
         raw_data = read_task.read(number_of_samples_per_channel=total_samples_to_read, timeout=timeout)
-        
+
         # Wait for the end of the tasks
         write_task.wait_until_done(timeout=timeout)
-        
+
         write_task.stop()
         read_task.stop()
         print("Reading&Writing success")
-        
-        
+
     except Exception as e:
         print("Error while Reading&Writing:", e)
-    
+
     return raw_data
 
 
-def quickwrite_and_read(write_task, read_task,total_samples_to_read, timeout):
+def quick_write_and_read(write_task, read_task, total_samples_to_read, timeout):
     """
    Start and stop the writing and the reading task.
 
@@ -250,32 +239,27 @@ def quickwrite_and_read(write_task, read_task,total_samples_to_read, timeout):
    Args:
        write_task (nidaqmx.Task): The task configured for writing scanning signals.
        read_task (nidaqmx.Task): The task configured for reading the input signal.
-       data_to_write (numpy.array): The data to be written to the analog output channels.
        total_samples_to_read (int): The total number of samples to read during data acquisition.
        timeout (float): The maximum timeout for data acquisition, in seconds.
 
    Returns:
        numpy.array: The raw data read from the analog input channel.
-
    """
-    try :
-    
+    try:
         # Start the tasks
         read_task.start()
         write_task.start()
-    
+
         # Read the data for the entire image
         raw_data = read_task.read(number_of_samples_per_channel=total_samples_to_read, timeout=timeout)
-    
+
         # Wait for the end of the tasks
         write_task.wait_until_done(timeout=timeout)
-        
+
         write_task.stop()
         read_task.stop()
-        
-        
+
     except Exception as e:
         print("Error while QuickReading&Writing:", e)
-    
-    return raw_data
 
+    return raw_data
