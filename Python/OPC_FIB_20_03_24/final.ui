@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1009</width>
-    <height>882</height>
+    <width>639</width>
+    <height>697</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -546,10 +546,10 @@
    <widget class="QPushButton" name="pushButton_video">
     <property name="geometry">
      <rect>
-      <x>150</x>
-      <y>710</y>
+      <x>220</x>
+      <y>640</y>
       <width>93</width>
-      <height>28</height>
+      <height>31</height>
      </rect>
     </property>
     <property name="text">
@@ -559,14 +559,34 @@
    <widget class="QPushButton" name="pushButton_stopvideo">
     <property name="geometry">
      <rect>
-      <x>260</x>
-      <y>710</y>
+      <x>330</x>
+      <y>640</y>
       <width>93</width>
-      <height>28</height>
+      <height>31</height>
      </rect>
     </property>
     <property name="text">
      <string>Stop</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButton_connections">
+    <property name="geometry">
+     <rect>
+      <x>440</x>
+      <y>640</y>
+      <width>81</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>MS Shell Dlg 2</family>
+      <weight>50</weight>
+      <bold>false</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>Connexions</string>
     </property>
    </widget>
   </widget>
@@ -575,8 +595,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1009</width>
-     <height>26</height>
+     <width>639</width>
+     <height>21</height>
     </rect>
    </property>
   </widget>

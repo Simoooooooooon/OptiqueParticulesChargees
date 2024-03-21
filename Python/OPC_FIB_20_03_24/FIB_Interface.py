@@ -1,18 +1,18 @@
 import sys
 from PyQt6 import QtCore, QtWidgets, uic
 from PyQt6.QtGui import QImage, QPixmap
-from PyQt6.QtCore import QThread, pyqtSignal, Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer
 import warnings
 from Modules_FIB import ImageProcessing as ImPr  # Module for Image Processing, used in the Image part
 from Modules_FIB import Scanning  # Module for Scanning & acquisition, use the Ni_Dependencies module
 from Modules_FIB import Ni_Dependencies as NID  # Module for ni Dependencies
-from Modules_FIB import Visa_Dependencies as VID  # Module for Visa Dependencies (unfinished)
-import time
-import pyvisa
+from Modules_FIB import Visa_Dependencies as VID  # Module for Visa Dependencies
+from Modules_FIB import connexion_window
 import numpy as np
 from PIL import Image
 import json
 from math import ceil
+from Modules_FIB import Thread
 
 # Ignores the ResourceWarnings made by PyVISA library
 warnings.simplefilter("ignore", ResourceWarning)
@@ -49,12 +49,14 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.pushButton_save_image.clicked.connect(self.saveImage)
         self.pushButton_load_config.clicked.connect(self.loadConfig)
         self.pushButton_save_config.clicked.connect(self.saveConfig)
+        self.pushButton_connections.clicked.connect(self.show_connections_window)
 
         # Continuous acquisition part
         self.pushButton_video.clicked.connect(self.togglevideo)
         self.video_in_progress = False
         self.timer = QTimer()
         self.timer.timeout.connect(self.Scanningcontinue)
+
         # Connect sliders to their respective functions
         self.brightness_slider.valueChanged.connect(self.gpp_4323_brightness_slider_changed)
         self.brightness_slider.sliderReleased.connect(self.gpp_4323_brightness_slider_released)
@@ -70,10 +72,11 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.population_thread = None
         self.progressBarThread = None
         self.currentImage = None
+        self.video_thread = None
 
         # Initialize the comboBoxes
-        self.populate_dev_combobox()
-        self.populate_gpp_4323_combobox()
+        #self.populate_dev_combobox()
+        #self.populate_gpp_4323_combobox()
 
         # Initialize the required time
         self.required_time()
@@ -82,6 +85,8 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.displayImage(
             np.zeros(self.spinBox_image_size.value() ** 2, dtype=np.uint8).reshape(self.spinBox_image_size.value(),
                                                                                    self.spinBox_image_size.value()))
+        # Initialize the connections window
+        self.window2 = connexion_window.Window()
 
     # Function to quit the application
 
@@ -92,7 +97,12 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         """
         if self.gpp_power_supply is not None:
             self.gpp_power_supply.disconnect()
+        self.window2.stop()
         QtCore.QCoreApplication.instance().quit()
+
+    # Function to display the connections window
+    def show_connections_window(self):
+        self.window2.show()
 
     #########################################################################################
 
@@ -161,7 +171,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         then listed in the GPP 4323 combobox.
         """
         try:
-            self.population_thread = Population()
+            self.population_thread = Thread.Population()
             self.population_thread.list.connect(self.send_to_GPP_comboBox)
             self.population_thread.finished.connect(self.thread_cleanup)
             self.population_thread.start()
@@ -186,11 +196,11 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Validates the selection and updates the UI based on the connection status.
         """
         try:
-            currentText = self.comboBox_gpp_4323.currentText()
-            if currentText == '':
+            current_text = self.comboBox_gpp_4323.currentText()
+            if current_text == '':
                 self.Message('Error', f"Please select something")
             else:
-                self.gpp_power_supply = PowerSupply(currentText)
+                self.gpp_power_supply = VID.PowerSupply(current_text)
 
                 error_checker = self.gpp_power_supply.connect()  # None if no error and "error message" otherwise
                 if error_checker is None:
@@ -264,13 +274,14 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 channel_read = self.comboBox_sensor.currentText()
                 mode = self.comboBox_Scanning_Mode.currentText()
                 # Sweep signal generation in a thread
-                self.sweep_thread = SweepThread(time_per_pixel, sampling_frequency, pixels_number, channel_lr,
-                                                channel_ud, channel_read, mode)
+                self.sweep_thread = Thread.SweepThread(time_per_pixel, sampling_frequency, pixels_number,
+                                                               channel_lr,
+                                                               channel_ud, channel_read, mode)
                 self.sweep_thread.errorOccurred.connect(self.handleSweepError)
                 self.sweep_thread.image.connect(self.displayImage)
                 self.sweep_thread.finished.connect(self.thread_cleanup)
 
-                self.progressBarThread = ProgressBar(time_per_pixel, pixels_number)
+                self.progressBarThread = Thread.ProgressBar(time_per_pixel, pixels_number)
                 self.progressBarThread.progressUpdated.connect(self.updateProgressBar)
                 self.progressBarThread.finished.connect(self.thread_cleanup)
 
@@ -326,13 +337,13 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         channel_ud = self.comboBox_vs.currentText()
         channel_read = self.comboBox_sensor.currentText()
 
-        self.VideoRthread = VideoR_thread(self.total_samples_to_read, self.timeout,
-                                          self.write_task, self.read_task,
-                                          time_per_pixel, sampling_frequency, pixels_number, channel_lr,
-                                          channel_ud, channel_read)
-        self.VideoRthread.image.connect(self.quickdisplayImage)
-        self.VideoRthread.finished.connect(self.thread_cleanup)
-        self.VideoRthread.start()
+        self.video_thread = Thread.VideoR_thread(self.total_samples_to_read, self.timeout,
+                                                         self.write_task, self.read_task,
+                                                         time_per_pixel, sampling_frequency, pixels_number, channel_lr,
+                                                         channel_ud, channel_read)
+        self.video_thread.image.connect(self.quickdisplayImage)
+        self.video_thread.finished.connect(self.thread_cleanup)
+        self.video_thread.start()
 
     def togglevideo(self):
         """
@@ -594,241 +605,6 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             result_str = f"{minutes}mn {remaining_seconds}s"
 
         self.label_time.setText(f"Acquisition time : {result_str}")  # Write the required time on the UI
-
-
-#########################################################################################
-# Classes
-class PowerSupply:
-    """
-    A class to handle the operations related to the GPP4323 power supply.
-
-    This class provides functionalities to connect to, configure, and control the GPP4323 power supply
-    using the PyVISA library. It allows setting the tension, and disconnecting from the power supply.
-
-    Attributes:
-        port (str): The port name where the power supply is connected.
-        device (pyvisa.Resource): A PyVISA resource representing the power supply.
-    """
-
-    def __init__(self, port):
-        """
-        Initializes the PowerSupply object with the specified port.
-
-        Parameters:
-            port (str): The port name where the power supply is connected.
-        """
-        self.port = port
-        self.device = None
-
-    def connect(self):
-        """
-        Connects to the power supply and initializes its settings.
-
-        This method establishes a connection to the power supply and sets initial current and voltage settings.
-        It also prints the device's identification string.
-
-        Returns:
-            Exception: Any exception raised during connection, if any.
-        """
-        try:
-            rm = pyvisa.ResourceManager()
-            self.device = rm.open_resource(self.port)
-            print(self.device.query('*IDN?'))
-            print("A CHANGER IMPERATIVEMENT")
-            self.device.write(f'ISET1:0.03')
-            self.device.write(f'ISET2:0.03')
-            self.device.write(f'ISET4:0.03')
-            self.device.write(f'VSET1:32')
-            self.device.write(f'VSET2:32')
-            self.device.write(f'VSET3:0')
-            self.device.write(f'VSET4:0')
-            self.device.write(f':ALLOUTON')
-        except Exception as e:
-            return e
-
-    def set_tension(self, tension):
-        """
-        Sets the tension of the power supply to the specified value.
-
-        Parameters:
-            tension (float): The tension value to set on the power supply.
-        """
-        if self.device:
-            self.device.write(f'VSET4:{tension}')
-
-    def disconnect(self):
-        """
-        Disconnects the power supply and resets its settings.
-
-        This method turns off all outputs and closes the connection to the power supply.
-        """
-        if self.device:
-            self.device.write(f'ISET1:0')
-            self.device.write(f'ISET2:0')
-            self.device.write(f'ISET4:0')
-            self.device.write(f'VSET1:0')
-            self.device.write(f'VSET2:0')
-            self.device.write(f'VSET3:0')
-            self.device.write(f'VSET4:0')
-            self.device.write(f':ALLOUTOFF')
-            time.sleep(0.1)
-            self.device.close()
-
-
-# Thread class for sweep
-class SweepThread(QThread):
-    """
-    A QThread subclass for handling the sweep signal generation in a separate thread.
-
-    This thread class is responsible for running the sweep signal generation process in the background,
-    thereby keeping the main UI responsive. It communicates the results and errors through signals.
-
-    Attributes:
-        errorOccurred (pyqtSignal): Signal emitted when an error occurs in the thread.
-        image (pyqtSignal): Signal emitted with the image data once the sweep process is complete.
-    """
-    errorOccurred = QtCore.pyqtSignal(str)  # Signal to handle possible errors
-    image = QtCore.pyqtSignal(np.ndarray)
-
-    def __init__(self, time_per_pixel, sampling_frequency, pixels_number, channel_lr, channel_ud, channel_read, mode,
-                 parent=None):
-        """
-        Initializes the SweepThread with necessary parameters for the sweep process.
-
-        Parameters:
-            time_per_pixel (float): Time spent per pixel in the scan.
-            sampling_frequency (int): The sampling frequency for the scan.
-            pixels_number (int): Number of pixels in each dimension of the scan.
-            channel_lr (str): The channel used for left-right movement.
-            channel_ud (str): The channel used for up-down movement.
-            channel_read (str): The channel used for reading the data.
-            parent (QObject): The parent object for this thread, if any.
-        """
-        super(SweepThread, self).__init__(parent)  # Initialize the QThread parent class
-        self.time_per_pixel = time_per_pixel
-        self.sampling_frequency = sampling_frequency
-        self.pixels_number = pixels_number
-        self.channel_lr = channel_lr
-        self.channel_ud = channel_ud
-        self.channel_read = channel_read
-        self.mode = mode
-
-    # Get the list of pixels and send it back
-    def run(self):
-        """
-        Executes the sweep operation in a separate thread.
-
-        This method is automatically called when the thread starts. It runs the sweep process and emits
-        the resulting image data or any errors encountered.
-        """
-        try:
-            # Scanning signal generation from "Scanning.py"
-            if self.mode == "Triangle":
-                data = Scanning.Scanning_Triangle(self.time_per_pixel, self.sampling_frequency, self.pixels_number,
-                                                  self.channel_lr,
-                                                  self.channel_ud, self.channel_read)
-            else:
-                data = Scanning.Scanning_Rise(self.time_per_pixel, self.sampling_frequency, self.pixels_number,
-                                              self.channel_lr,
-                                              self.channel_ud, self.channel_read)
-            self.image.emit(data)
-        except Exception as e:
-            self.errorOccurred.emit(str(e))
-
-
-# Thread class for close in time acquisition (video scanning)
-class VideoR_thread(QThread):
-    """
-    A QThread subclass for handling the VideoR_thread signal generation in a separate thread.
-
-    This thread class is responsible for running the continuous acquisition signal generation process in the background,
-    thereby keeping the main UI responsive. It communicates the results and errors through signals.
-
-    Attributes:
-        errorOccurred (pyqtSignal): Signal emitted when an error occurs in the thread.
-        image (pyqtSignal): Signal emitted with the image data once the scanning process is complete.
-    """
-    errorOccurred = QtCore.pyqtSignal(str)
-    image = QtCore.pyqtSignal(np.ndarray)
-
-    def __init__(self, total_samples_to_read, timeout, write_task, read_task, time_per_pixel,
-                 sampling_frequency, pixels_number, channel_lr, channel_ud, channel_read, parent=None):
-
-        super(VideoR_thread, self).__init__(parent)
-        self.time_per_pixel = time_per_pixel
-        self.sampling_frequency = sampling_frequency
-        self.pixels_number = pixels_number
-        self.channel_lr = channel_lr
-        self.channel_ud = channel_ud
-        self.channel_read = channel_read
-        self.total_samples_to_read = total_samples_to_read
-        self.timeout = timeout
-        self.write_task = write_task
-        self.read_task = read_task
-        self.samples_per_step = int(time_per_pixel * sampling_frequency)
-
-    def run(self):
-        try:
-            data = Scanning.videoGo(self.pixels_number, self.write_task, self.read_task,
-                                    self.total_samples_to_read, self.timeout)
-            self.image.emit(data)
-        except Exception as e:
-            self.errorOccurred.emit(str(e))
-
-
-# Thread class for GPP ComboBox population
-class Population(QThread):
-    list = QtCore.pyqtSignal(list)
-
-    def __init__(self, parent=None):
-        super(Population, self).__init__(parent)  # Initialize the QThread parent class
-
-    # Get the list of connected devices and send it back
-    def run(self):
-        items = VID.ResourcesList()
-        self.list.emit(items)
-
-
-# Thread class for the progress bar
-class ProgressBar(QThread):
-    """
-    A QThread subclass for populating the list of connected GPIB devices.
-
-    This thread class is used to asynchronously retrieve and emit the list of connected GPIB devices,
-    ensuring that the UI remains responsive during this potentially time-consuming process.
-
-    Attributes:
-        list (pyqtSignal): Signal emitted with the list of connected GPIB devices.
-    """
-    progressUpdated = pyqtSignal(int)  # Signal to update the progression
-
-    def __init__(self, time_per_pixel, pixels_number, parent=None):
-        """
-        Initializes the Population thread.
-
-        Parameters:
-            parent (QObject): The parent object for this thread, if any.
-        """
-        super(ProgressBar, self).__init__(parent)
-        time_per_pixel = time_per_pixel / 1000000
-        self.total_time = time_per_pixel * (pixels_number + 2) ** 2
-        self.interval = time_per_pixel  # Update interval
-
-    # Calculates the percentage progress and send it back
-    def run(self):
-        """
-        Executes the device population process in a separate thread.
-
-        This method is automatically called when the thread starts. It retrieves the list of connected
-        GPIB devices and emits it through the 'list' signal.
-        """
-        start_time = time.time()
-        while time.time() - start_time < self.total_time:
-            elapsed_time = time.time() - start_time
-            progress = int((elapsed_time / self.total_time) * 100)
-            self.progressUpdated.emit(progress)
-            time.sleep(self.interval)  # Wait for the next update
-        self.progressUpdated.emit(100)
 
 
 #########################################################################################
