@@ -132,6 +132,24 @@ def configure_tasks(channel_lr, channel_ud, channel_read, min_tension, max_tensi
 
 def configure_video_tasks(channel_lr, channel_ud, channel_read, min_tension, max_tension,
                           sampling_frequency, complete_horizontal_staircase, total_samples_to_read, data_to_write):
+    """
+    Configures the necessary NI-DAQmx tasks for video acquisition, including setting up the analog output channels
+    for scanning and the analog input channel for data acquisition. This function prepares the system for
+    synchronized reading and writing operations, essential for acquiring video data.
+
+    Parameters: channel_lr (str): The identifier for the left-right scanning channel. channel_ud (str): The
+    identifier for the up-down scanning channel. channel_read (str): The identifier for the channel from which to
+    read the video signal. min_tension (float): The minimum voltage value for the scanning signals. max_tension (
+    float): The maximum voltage value for the scanning signals. sampling_frequency (int): The sampling frequency for
+    both reading and writing operations. complete_horizontal_staircase (numpy.ndarray): The precomputed staircase
+    signal for horizontal scanning. total_samples_to_read (int): The total number of samples to be read, determining
+    the duration of the read task. data_to_write (numpy.ndarray): The array containing both the horizontal and
+    vertical staircase signals to be written.
+
+    Returns:
+        tuple: A tuple containing the configured write and read tasks ready for execution.
+    """
+
     try:
         write_task = nidaqmx.Task()
         read_task = nidaqmx.Task()

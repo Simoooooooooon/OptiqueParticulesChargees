@@ -170,6 +170,23 @@ def triangle_scanning(time_per_pixel, sampling_frequency, pixels_number, channel
 
 
 def video_init(time_per_pixel, sampling_frequency, pixels_number, channel_lr, channel_ud, channel_read):
+    """
+    Initializes the configuration for video acquisition, including creating the staircase signals for scanning
+    and setting up read and write tasks. It adjusts the number of pixels to account for synchronization issues
+    at the start and converts time units appropriately.
+
+    Parameters:
+        time_per_pixel (int): Time in microseconds allocated for each pixel.
+        sampling_frequency (int): The frequency at which samples are acquired.
+        pixels_number (int): The total number of pixels in one dimension of the square video frame.
+        channel_lr (str): The channel used for horizontal (left-right) scanning.
+        channel_ud (str): The channel used for vertical (up-down) scanning.
+        channel_read (str): The channel used for reading the video signal.
+
+    Returns:
+        tuple: Contains the write task, read task, timeout for the operation, and the total number of samples to read.
+    """
+
     # We have to take 2 more lines and columns because the acquisition isn't really synchronised at first
     pixels_number += 2
 
@@ -208,6 +225,22 @@ def video_init(time_per_pixel, sampling_frequency, pixels_number, channel_lr, ch
 
 
 def video_instance(write_task, read_task, timeout, pixels_number, total_samples_to_read):
+    """
+    Captures a single instance of video data by writing to and reading from the configured tasks. It processes
+    the raw data into a 2D image array, normalizes the image values, and corrects for initial acquisition
+    synchronization issues.
+
+    Parameters:
+        write_task: The task used for writing the scan signals.
+        read_task: The task used for reading the video data.
+        timeout (float): The maximum time to wait for the read operation to complete.
+        pixels_number (int): The number of pixels in one dimension of the video frame, adjusted for synchronization.
+        total_samples_to_read (int): The total number of samples to be read from the read task.
+
+    Returns:
+        numpy.ndarray: The processed 2D image array.
+    """
+
     # Create a StreamWriter for the analog outputs
     raw_data = NID.quick_write_and_read(write_task, read_task, total_samples_to_read, timeout)
 
@@ -224,5 +257,14 @@ def video_instance(write_task, read_task, timeout, pixels_number, total_samples_
 
 
 def video_stop(write_task, read_task):
+    """
+    Stops and closes the write and read tasks used for video acquisition, effectively terminating the acquisition
+    process.
+
+    Parameters:
+        write_task: The task used for writing the scan signals.
+        read_task: The task used for reading the video data.
+    """
+
     # Stop the tasks
     NID.close_rw_tasks(write_task, read_task)

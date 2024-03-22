@@ -3,14 +3,15 @@ import numpy as np
 
 def normalize(raw_image):
     """
-    Parameters
-    ----------
-    raw_image : Numpy Data Array
+    Normalizes a raw image data array to a scale of 0 to 255 (8-bit grey values).
 
-    Returns
-    -------
-    Raw_Image : Normalized Data Array in grey values.
+    Parameters:
+        raw_image (numpy.ndarray): The input raw image data array.
+
+    Returns:
+        numpy.ndarray: The normalized image data array with values scaled to the range [0, 255].
     """
+
     min_val = raw_image.min()
     max_val = raw_image.max()
     raw_image = np.interp(raw_image, (min_val, max_val), (0, 255))
@@ -20,14 +21,15 @@ def normalize(raw_image):
 
 def remove_two_columns(raw_image):
     """
-    Parameters
-    ----------
-    raw_image : Numpy Array
+    Removes the first two rows and columns from an image data array to correct for edge artifacts.
 
-    Returns
-    -------
-    raw_image : Same Array with two rows removed
+    Parameters:
+        raw_image (numpy.ndarray): The input image data array.
+
+    Returns:
+        numpy.ndarray: The modified image data array with the first two rows and columns removed.
     """
+
     raw_image = raw_image[1:, 1:]
     raw_image = raw_image[1:, 1:]
 
@@ -36,22 +38,35 @@ def remove_two_columns(raw_image):
 
 def reverse_alternate_rows(image):
     """
-    In case of a triangle scanning, this function invert one line over 2 to
-    obtain the right Image.
-    
-    Parameters
-    ----------
-    image : Data Array of the Image
+    Reverses every alternate row in an image data array. This is used to correct for the scanning direction in
+    bidirectional scanning methods, ensuring a consistent orientation across all rows.
 
-    Returns
-    -------
-    Image : Corrected Data Array
+    Parameters:
+        image (numpy.ndarray): The input image data array.
+
+    Returns:
+        numpy.ndarray: The image data array with alternate rows reversed.
     """
+
     image[1::2, :] = image[1::2, ::-1]
     return image
 
 
 def average(raw_data, samples_per_step, pixels_number):
+    """
+    Averages groups of samples in raw data to reduce noise and improve signal quality. This is useful in
+    situations where multiple samples correspond to a single pixel value.
+
+    Parameters:
+        raw_data (list or numpy.ndarray): The raw data samples to be averaged.
+        samples_per_step (int): The number of samples corresponding to each pixel.
+        pixels_number (int): The total number of pixels in one dimension of the square image.
+
+    Returns:
+        numpy.ndarray: The averaged image data array, reshaped to a 2D square array corresponding to the
+                       dimensions of the image.
+    """
+
     # Convert raw_data to a NumPy array for efficient processing
     raw_data_array = np.array(raw_data)
 

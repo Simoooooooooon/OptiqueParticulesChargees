@@ -3,8 +3,8 @@ from PyQt6 import QtCore, QtWidgets, uic
 from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtCore import Qt
 import warnings
-from Modules_FIB import Ni_Dependencies  # Module for ni Dependencies
-from Modules_FIB import Visa_Dependencies  # Module for Visa Dependencies
+from Modules_FIB import Ni_Dependencies
+from Modules_FIB import Visa_Dependencies
 from Modules_FIB import connexion_window
 import numpy as np
 from PIL import Image
@@ -36,6 +36,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         super(MyWindow, self).__init__()  # Initialize the parent class
         self.setupUi(self)  # Load the UI
         self.setWindowTitle("Interface de pilotage du FIB")  # Set window title
+
         # Connect buttons to their respective functions
         self.pushButton_quit.clicked.connect(self.quit)
         self.pushButton_dev_refresh.clicked.connect(self.populate_dev_combobox)
@@ -48,8 +49,6 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.pushButton_load_config.clicked.connect(self.load_config)
         self.pushButton_save_config.clicked.connect(self.save_config)
         self.pushButton_connections.clicked.connect(self.show_connections_window)
-
-        # Continuous acquisition part
         self.pushButton_start_video.clicked.connect(self.start_video)
         self.pushButton_stop_video.clicked.connect(self.stop_video)
 
@@ -61,6 +60,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.spinBox_time_per_pixel.valueChanged.connect(self.required_time)
         self.spinBox_image_size.valueChanged.connect(self.required_time)
         self.spinBox_sampling_frequency.editingFinished.connect(self.required_time)
+        self.comboBox_Scanning_Mode.currentTextChanged.connect(self.required_time)
 
         # Initialize instance variables
         self.video_resolution = 100
@@ -76,7 +76,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.populate_dev_combobox()
         # self.populate_gpp_4323_combobox()
 
-        # Initialize the required time
+        # Initialize the acquisition time
         self.required_time()
 
         # Initialize the image to black
@@ -87,7 +87,6 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.connexion_window = connexion_window.Window()
 
     # Function to quit the application
-
     def quit(self):
         """
         Function to quit the application safely.
@@ -100,6 +99,10 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # Function to display the connections window
     def show_connections_window(self):
+        """
+        Function to display the "connections" window to the user when the button is pressed
+        """
+
         self.connexion_window.show()
 
     #########################################################################################
@@ -114,6 +117,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         This method queries the local NI system for all connected devices and updates the combobox with their names.
         It is used to provide a selection of available NI devices for user interaction.
         """
+
         try:
             system = Ni_Dependencies.ni_cards_system()
             items = [device.name for device in system.devices]  # Lists the connected NI devices
@@ -132,6 +136,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         This method checks if the selected device from the combobox is currently connected. If so, it retrieves and
         lists the available analog output and input channels of the selected NI device in their respective combo-boxes.
         """
+
         try:
             self.port_dev = self.comboBox_dev.currentText()
             system = Ni_Dependencies.ni_cards_system()
@@ -147,6 +152,10 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                                device.ao_physical_chans]  # Lists the available analog output channels
                 ai_channels = [chan.name for chan in
                                device.ai_physical_chans]  # Lists the available analog input channels
+
+                # Sets the maximum sampling frequency
+                self.spinBox_sampling_frequency.setMaximum(int(device.ai_max_single_chan_rate))
+
                 self.comboBox_vs.clear()  # Clear existing items
                 self.comboBox_hs.clear()  # Clear existing items
                 self.comboBox_vs.addItems(ao_channels)  # Add new items
@@ -169,9 +178,11 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         prevent the GUI from freezing during this potentially time-consuming operation. The retrieved device names are
         then listed in the GPP 4323 combobox.
         """
+
         try:
             self.population_thread = Thread.Population()
             self.population_thread.list.connect(self.send_to_gpp_combobox)
+            self.population_thread.errorOccurred.connect(self.handle_errors)
             self.population_thread.finished.connect(self.thread_cleanup)
             self.population_thread.start()
         except Exception as e:
@@ -185,6 +196,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Args:
         items (list): List of device names to be displayed in the comboBox.
         """
+
         self.comboBox_gpp_4323.clear()  # Clear existing items
         self.comboBox_gpp_4323.addItems(items)  # Add new items
 
@@ -194,6 +206,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Handles the connection to the selected GPP4323 power supply.
         Validates the selection and updates the UI based on the connection status.
         """
+
         try:
             current_text = self.comboBox_gpp_4323.currentText()
             if current_text == '':
@@ -214,6 +227,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         """
         Displays a help message regarding the connections for the GPP4323 power supply.
         """
+
         self.message('Help',
                      'Connect both CH1(-) and CH2(-) together and take your output between CH1(+) and CH2().\nConnect '
                      'the electron detector to CH4.')
@@ -227,6 +241,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Updates the label to display the current brightness tension value based on the slider's position.
         This function is called whenever the slider value changes.
         """
+
         try:
             tension = self.brightness_slider.value()  # Gets the value of the slider
             self.label_current_brightness.setText(
@@ -240,6 +255,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Updates the brightness tension of the GPP power supply when the slider is released. This function ensures
         that the power supply's tension is updated only when the user finishes adjusting the slider.
         """
+
         try:
             self.gpp_power_supply.set_tension(
                 self.brightness_slider.value())  # Gets the value of the slider and send it to the power supply
@@ -254,6 +270,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Function to start the Sweep operation.
         Checks for valid configurations and starts the SweepThread and ProgressBarThread.
         """
+
         if self.port_dev is None:
             self.message('Error', f"Please connect to NI Card first")
         elif self.comboBox_hs.currentText() == self.comboBox_vs.currentText():
@@ -278,12 +295,13 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.sweep_thread = Thread.SweepThread(time_per_pixel, sampling_frequency, pixels_number,
                                                        channel_lr,
                                                        channel_ud, channel_read, mode)
-                self.sweep_thread.errorOccurred.connect(self.handle_sweep_error)
+                self.sweep_thread.errorOccurred.connect(self.handle_errors)
                 self.sweep_thread.image.connect(self.image_display)
                 self.sweep_thread.finished.connect(self.thread_cleanup)
 
                 self.progressBarThread = Thread.ProgressBar(time_per_pixel, pixels_number)
                 self.progressBarThread.progressUpdated.connect(self.update_progress_bar)
+                self.progressBarThread.errorOccurred.connect(self.handle_errors)
                 self.progressBarThread.finished.connect(self.thread_cleanup)
 
                 self.sweep_thread.start()
@@ -291,19 +309,20 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             except Exception as e:
                 self.message('Error', f"Sweep function returned : {e}")
 
-    # If an error occurred in the thread, we display it to the user
-    def handle_sweep_error(self, error_message):
+    # If an error occurred in any thread, we display it to the user
+    def handle_errors(self, error_message):
         """
         Displays an error message if an error occurs during the sweep process.
 
-        This method is connected to the `errorOccurred` signal of the SweepThread. It is triggered
-        when the SweepThread encounters an error, and it displays the error message using the
+        This method is connected to the `errorOccurred` signals. It is triggered
+        when the threads encounter an error, and it displays the error message using the
         custom Message method of the MyWindow class.
 
         Parameters:
-            error_message (str): The error message received from the SweepThread.
+            error_message (str): The error message received from the threads.
         """
-        self.message('Error', f"Sweep function returned: {error_message}")
+
+        self.message('Error', f"A thread returned : {error_message}")
 
     # Update the progression bar
     def update_progress_bar(self, value):
@@ -317,12 +336,23 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Parameters:
             value (int): The current progress value to set on the progress bar.
         """
+
         self.progressBar_sweep.setValue(value)
 
     #########################################################################################
     # Video Scanning part
 
+    # Initialize and start the video
     def start_video(self):
+        """
+        Initializes and starts the video acquisition process by creating and starting a video thread.
+        Before starting, it performs checks to ensure that the NI Card is connected, different channels are
+        selected for horizontal and vertical sweeps, and the time per pixel is sufficient based on the sampling
+        frequency. If any check fails, an error message is displayed. On successful start, it disables the start
+        video button and enables the stop video button, along with disabling other relevant UI components to
+        prevent conflicting operations.
+        """
+
         if self.port_dev is None:
             self.message('Error', f"Please connect to NI Card first")
         elif self.comboBox_hs.currentText() == self.comboBox_vs.currentText():
@@ -345,6 +375,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.video_thread = Thread.VideoThread(time_per_pixel, sampling_frequency, pixels_number, channel_lr,
                                                        channel_ud, channel_read)
                 self.video_thread.image.connect(self.video_display)
+                self.video_thread.errorOccurred.connect(self.handle_errors)
                 self.video_thread.finished.connect(self.thread_cleanup)
                 self.video_thread.start()
 
@@ -357,7 +388,15 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             except Exception as e:
                 self.message('Error', f"Start video function returned : {e}")
 
+    # Stops the video
     def stop_video(self):
+        """
+        Stops the video acquisition process by signaling the video thread to stop.
+        It tries to safely terminate the video thread and then resets the UI components to their initial state,
+        enabling the start video button and disabling the stop video button, along with re-enabling other UI
+        components for further operations. If stopping the video thread fails, an error message is displayed.
+        """
+
         try:
             self.video_thread.stop()  # Stops the acquisition
 
@@ -382,6 +421,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Args:
         image (numpy.ndarray): List of pixel values to be displayed.
         """
+
         try:
             pixels_number = self.spinBox_image_size.value()
 
@@ -405,6 +445,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Args:
         image (numpy.ndarray): List of pixel values to be displayed.
         """
+
         try:
             pixels_number = self.video_resolution
 
@@ -426,6 +467,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Function to save the current image displayed in the interface.
         Opens a dialog to choose the file location and format.
         """
+
         try:
             # Get the save name
             filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save Image", "",
@@ -445,6 +487,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Function to save the current configuration to a JSON file.
         Extracts values from UI elements and writes them to 'config.json'.
         """
+
         try:
             # Gets the values from the UI
             config = {
@@ -471,6 +514,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Function to load configuration from a JSON file.
         Reads 'config.json' and updates the UI elements with stored values.
         """
+
         try:
             # Loads the json config file
             with open('config.json', 'r') as config_file:
@@ -511,6 +555,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             title (str): The title of the message box.
             message (str): The message to be displayed in the message box.
         """
+
         # Create a non-modal message box
         msg_box = QtWidgets.QMessageBox(self)  # Message box
         msg_box.setIcon(QtWidgets.QMessageBox.Icon.Information)  # Icon
@@ -529,6 +574,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         that thread objects are deleted safely after their execution is complete, helping to free up
         resources and prevent memory leaks.
         """
+
         sender = self.sender()  # Retrieves the object that emitted the signal (in this case, the finished thread)
         if sender:
             sender.deleteLater()  # Safely deletes the thread object to free up resources
@@ -542,7 +588,10 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         time per pixel and the total number of pixels. It updates the UI to display this
         information in a user-friendly format.
         """
-        pixels_number = self.spinBox_image_size.value() + 2
+
+        pixels_number = self.spinBox_image_size.value()
+        if self.comboBox_Scanning_Mode.currentText() == 'Normal':
+            pixels_number += 2
         sampling_frequency = self.spinBox_sampling_frequency.value()
 
         # Changes the step "time_per_pixel" can take
@@ -551,24 +600,32 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.spinBox_time_per_pixel.setMinimum(min_time_per_pixel)
         self.spinBox_time_per_pixel.setMaximum(min_time_per_pixel * 100)
 
-        time_per_pixel = self.spinBox_time_per_pixel.value()
-        time_per_pixel = time_per_pixel / 1000000   # s to µs
-
         # Calculate and display the number of time we average
+        time_per_pixel = self.spinBox_time_per_pixel.value()
+        time_per_pixel = time_per_pixel / 1000000  # s to µs
         average = int(time_per_pixel * sampling_frequency)
-        print(average)
+
+        # Setting average measure text
         if average == 1:
             self.label_average.setText(f"Taking 1 measure")
         else:
             self.label_average.setText(f"Taking {str(average)} measures")
 
-        # Change the display format to minutes if there are more than 60 seconds required
-        seconds = int(time_per_pixel * pixels_number ** 2)
-        minutes = seconds // 60
-        remaining_seconds = seconds % 60
-        if minutes == 0:
-            result_str = f"{remaining_seconds} seconds"
-        else:
+        # Calculating acquisition time
+        total_seconds = time_per_pixel * pixels_number ** 2
+
+        # Displaying acquisition time
+        if total_seconds < 0.001:  # Less than 1 millisecond
+            microseconds = int(total_seconds * 1000000)  # Convert to microseconds
+            result_str = f"{microseconds} µs"
+        elif total_seconds < 1:  # Less than 1 second, but more than 1 millisecond
+            milliseconds = int(total_seconds * 1000)  # Convert to milliseconds
+            result_str = f"{milliseconds} ms"
+        elif total_seconds < 60:  # Less than 60 seconds
+            result_str = f"{int(total_seconds)} seconds"
+        else:  # 60 seconds or more
+            minutes = int(total_seconds) // 60
+            remaining_seconds = int(total_seconds) % 60
             result_str = f"{minutes}mn {remaining_seconds}s"
 
         self.label_time.setText(f"Acquisition time : {result_str}")  # Write the required time on the UI
@@ -576,18 +633,9 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
 #########################################################################################
 
-
-# Starts the interface
-def run_interface():
-    """
-    Starts the Qt application and shows the main window.
-    """
+# Main function
+if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)  # Create a Qt application
     window = MyWindow()  # Create an instance of MyWindow
     window.show()  # Show the window
     sys.exit(app.exec())  # Start the application event loop
-
-
-# Main function
-if __name__ == '__main__':
-    run_interface()
