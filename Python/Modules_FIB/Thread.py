@@ -39,15 +39,18 @@ class SweepThread(QThread):
             channel_read (str): The channel used for reading the data.
             parent (QObject): The parent object for this thread, if any.
         """
+        try:
+            super(SweepThread, self).__init__(parent)  # Initialize the QThread parent class
+            self.time_per_pixel = time_per_pixel
+            self.sampling_frequency = sampling_frequency
+            self.pixels_number = pixels_number
+            self.channel_lr = channel_lr
+            self.channel_ud = channel_ud
+            self.channel_read = channel_read
+            self.mode = mode
 
-        super(SweepThread, self).__init__(parent)  # Initialize the QThread parent class
-        self.time_per_pixel = time_per_pixel
-        self.sampling_frequency = sampling_frequency
-        self.pixels_number = pixels_number
-        self.channel_lr = channel_lr
-        self.channel_ud = channel_ud
-        self.channel_read = channel_read
-        self.mode = mode
+        except Exception as e:
+            self.errorOccurred.emit(f"__init__ in SweepThread returned : {str(e)}")
 
     # Get the list of pixels and send it back
     def run(self):
@@ -69,8 +72,9 @@ class SweepThread(QThread):
                                               self.channel_lr,
                                               self.channel_ud, self.channel_read)
             self.image.emit(data)
+
         except Exception as e:
-            self.errorOccurred.emit(str(e))
+            self.errorOccurred.emit(f"SweepThread returned : {str(e)}")
 
 
 # Thread class for close in time acquisition (video scanning)
@@ -113,17 +117,21 @@ class VideoThread(QThread):
             parent (QObject, optional): The parent object for this thread. Defaults to None.
         """
 
-        super(VideoThread, self).__init__(parent)
+        try:
+            super(VideoThread, self).__init__(parent)
 
-        # Initialization of the tasks RW for continuous acquisitions
-        init = Scanning.video_init(time_per_pixel, sampling_frequency, pixels_number, channel_lr, channel_ud,
-                                   channel_read)
-        self.pixels_number = pixels_number
-        self.write_task = init[0]
-        self.read_task = init[1]
-        self.timeout = init[2]
-        self.total_samples_to_read = init[3]
-        self.running = True
+            # Initialization of the tasks RW for continuous acquisitions
+            init = Scanning.video_init(time_per_pixel, sampling_frequency, pixels_number, channel_lr, channel_ud,
+                                       channel_read)
+            self.pixels_number = pixels_number
+            self.write_task = init[0]
+            self.read_task = init[1]
+            self.timeout = init[2]
+            self.total_samples_to_read = init[3]
+            self.running = True
+
+        except Exception as e:
+            self.errorOccurred.emit(f"__init__ in VideoThread returned : {str(e)}")
 
     # Continuously running
     def run(self):
@@ -132,15 +140,16 @@ class VideoThread(QThread):
         data is emitted through the `image` signal. If an error occurs during acquisition, the error is emitted
         through the `errorOccurred` signal.
         """
+        try:
+            while self.running:  # While the user didn't ask to stop
 
-        while self.running:  # While the user didn't ask to stop
-            try:
                 # Get a new image
                 data = Scanning.video_instance(self.write_task, self.read_task,
                                                self.timeout, self.pixels_number, self.total_samples_to_read)
                 self.image.emit(data)
-            except Exception as e:
-                self.errorOccurred.emit(str(e))
+
+        except Exception as e:
+            self.errorOccurred.emit(f"VideoThread returned : {str(e)}")
 
     # Used to stop the video flux and erase the NI tasks
     def stop(self):
@@ -149,9 +158,13 @@ class VideoThread(QThread):
         `run` method. It also safely stops and cleans up the hardware tasks for reading and writing.
         """
 
-        self.running = False
-        time.sleep(.1)  # Timeout to prevent errors from showing up
-        Scanning.video_stop(self.write_task, self.read_task)  # Stops the RW tasks
+        try:
+            self.running = False
+            time.sleep(.1)  # Timeout to prevent errors from showing up
+            Scanning.video_stop(self.write_task, self.read_task)  # Stops the RW tasks
+
+        except Exception as e:
+            self.errorOccurred.emit(f"Stop function in VideoThread returned : {str(e)}")
 
 
 # Thread class for GPP ComboBox population
@@ -176,8 +189,11 @@ class Population(QThread):
         Parameters:
             parent (QObject, optional): The parent object for this thread, if any. Defaults to None.
         """
+        try:
+            super(Population, self).__init__(parent)  # Initialize the QThread parent class
 
-        super(Population, self).__init__(parent)  # Initialize the QThread parent class
+        except Exception as e:
+            self.errorOccurred.emit(f"__init__ in Population thread returned : {str(e)}")
 
     # Get the list of connected devices and send it back
     def run(self):
@@ -190,8 +206,9 @@ class Population(QThread):
         try:
             items = Visa_Dependencies.resources_list()
             self.list.emit(items)
+
         except Exception as e:
-            self.errorOccurred.emit(str(e))
+            self.errorOccurred.emit(f"Population thread returned : {str(e)}")
 
 
 # Thread class for the progress bar
@@ -206,7 +223,7 @@ class ProgressBar(QThread):
         errorOccurred (str): Emitted if an error occurs during the progress update process.
     """
 
-    progressUpdated = pyqtSignal(int)  # Signal to update the progression
+    progressUpdated = QtCore.pyqtSignal(int)  # Signal to update the progression
     errorOccurred = QtCore.pyqtSignal(str)
 
     def __init__(self, time_per_pixel, pixels_number, parent=None):
@@ -218,11 +235,14 @@ class ProgressBar(QThread):
             pixels_number (int): The total number of pixels in the operation, used to calculate total time.
             parent (QObject, optional): The parent object for this thread, if any. Defaults to None.
         """
+        try:
+            super(ProgressBar, self).__init__(parent)
+            time_per_pixel = time_per_pixel / 1000000
+            self.total_time = time_per_pixel * (pixels_number + 2) ** 2
+            self.interval = time_per_pixel  # Update interval
 
-        super(ProgressBar, self).__init__(parent)
-        time_per_pixel = time_per_pixel / 1000000
-        self.total_time = time_per_pixel * (pixels_number + 2) ** 2
-        self.interval = time_per_pixel  # Update interval
+        except Exception as e:
+            self.errorOccurred.emit(f"__init__ in ProgressBar thread returned : {str(e)}")
 
     # Calculates the percentage progress and send it back
     def run(self):
@@ -241,5 +261,6 @@ class ProgressBar(QThread):
                 self.progressUpdated.emit(progress)
                 time.sleep(self.interval)  # Wait for the next update
             self.progressUpdated.emit(100)
+
         except Exception as e:
-            self.errorOccurred.emit(str(e))
+            self.errorOccurred.emit(f"ProgressBar thread returned : {str(e)}")

@@ -5,7 +5,7 @@ from PyQt6.QtCore import Qt
 import warnings
 from Modules_FIB import Ni_Dependencies
 from Modules_FIB import Visa_Dependencies
-from Modules_FIB import connexion_window
+from Modules_FIB import Source_Lenses
 import numpy as np
 from PIL import Image
 import json
@@ -16,7 +16,7 @@ from Modules_FIB import Thread
 warnings.simplefilter("ignore", ResourceWarning)
 
 # Load the UI file created with QT Designer
-Ui_MainWindow, QtBaseClass = uic.loadUiType("final.ui")
+Ui_MainWindow, QtBaseClass = uic.loadUiType("Main_interface.ui")
 
 
 # Main class for the interface
@@ -33,58 +33,63 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         """
         Initialize the interface and set up UI components and connections.
         """
-        super(MyWindow, self).__init__()  # Initialize the parent class
-        self.setupUi(self)  # Load the UI
-        self.setWindowTitle("Interface de pilotage du FIB")  # Set window title
 
-        # Connect buttons to their respective functions
-        self.pushButton_quit.clicked.connect(self.quit)
-        self.pushButton_dev_refresh.clicked.connect(self.populate_dev_combobox)
-        self.pushButton_connect_dev.clicked.connect(self.connect_to_card)
-        self.pushButton_gpp_4323_refresh.clicked.connect(self.populate_gpp_4323_combobox)
-        self.pushButton_connect_gpp_4323.clicked.connect(self.connect_to_gpp_4323)
-        self.pushButton_connect_gpp_4323_help.clicked.connect(self.gpp_4323_help)
-        self.pushButton_sweep.clicked.connect(self.sweep)
-        self.pushButton_save_image.clicked.connect(self.save_image)
-        self.pushButton_load_config.clicked.connect(self.load_config)
-        self.pushButton_save_config.clicked.connect(self.save_config)
-        self.pushButton_connections.clicked.connect(self.show_connections_window)
-        self.pushButton_start_video.clicked.connect(self.start_video)
-        self.pushButton_stop_video.clicked.connect(self.stop_video)
+        try:
+            super(MyWindow, self).__init__()  # Initialize the parent class
+            self.setupUi(self)  # Load the UI
+            self.setWindowTitle("Interface de pilotage du FIB")  # Set window title
 
-        # Connect sliders to their respective functions
-        self.brightness_slider.valueChanged.connect(self.gpp_4323_brightness_slider_changed)
-        self.brightness_slider.sliderReleased.connect(self.gpp_4323_brightness_slider_released)
+            # Connect buttons to their respective functions
+            self.pushButton_quit.clicked.connect(self.quit)
+            self.pushButton_dev_refresh.clicked.connect(self.populate_dev_combobox)
+            self.pushButton_connect_dev.clicked.connect(self.connect_to_card)
+            self.pushButton_gpp_4323_refresh.clicked.connect(self.populate_gpp_4323_combobox)
+            self.pushButton_connect_gpp_4323.clicked.connect(self.connect_to_gpp_4323)
+            self.pushButton_connect_gpp_4323_help.clicked.connect(self.gpp_4323_help)
+            self.pushButton_sweep.clicked.connect(self.sweep)
+            self.pushButton_save_image.clicked.connect(self.save_image)
+            self.pushButton_load_config.clicked.connect(self.load_config)
+            self.pushButton_save_config.clicked.connect(self.save_config)
+            self.pushButton_connections.clicked.connect(self.show_connections_window)
+            self.pushButton_start_video.clicked.connect(self.start_video)
+            self.pushButton_stop_video.clicked.connect(self.stop_video)
 
-        # Ensure required time recalculation after modification
-        self.spinBox_time_per_pixel.valueChanged.connect(self.required_time)
-        self.spinBox_image_size.valueChanged.connect(self.required_time)
-        self.spinBox_sampling_frequency.editingFinished.connect(self.required_time)
-        self.comboBox_Scanning_Mode.currentTextChanged.connect(self.required_time)
+            # Connect sliders to their respective functions
+            self.brightness_slider.valueChanged.connect(self.gpp_4323_brightness_slider_changed)
+            self.brightness_slider.sliderReleased.connect(self.gpp_4323_brightness_slider_released)
 
-        # Initialize instance variables
-        self.video_resolution = 100
-        self.port_dev = None
-        self.gpp_power_supply = None
-        self.sweep_thread = None
-        self.population_thread = None
-        self.progressBarThread = None
-        self.currentImage = None
-        self.video_thread = None
+            # Ensure required time recalculation after modification
+            self.spinBox_time_per_pixel.valueChanged.connect(self.required_time)
+            self.spinBox_image_size.valueChanged.connect(self.required_time)
+            self.spinBox_sampling_frequency.editingFinished.connect(self.required_time)
+            self.comboBox_Scanning_Mode.currentTextChanged.connect(self.required_time)
 
-        # Initialize the comboBoxes
-        self.populate_dev_combobox()
-        # self.populate_gpp_4323_combobox()
+            # Initialize instance variables
+            self.video_resolution = 100
+            self.port_dev = None
+            self.gpp_power_supply = None
+            self.sweep_thread = None
+            self.population_thread = None
+            self.progressBarThread = None
+            self.currentImage = None
+            self.video_thread = None
 
-        # Initialize the acquisition time
-        self.required_time()
+            # Initialize the comboBoxes
+            self.populate_dev_combobox()
+            # self.populate_gpp_4323_combobox()
 
-        # Initialize the image to black
-        self.image_display(
-            np.zeros(self.spinBox_image_size.value() ** 2, dtype=np.uint8).reshape(self.spinBox_image_size.value(),
-                                                                                   self.spinBox_image_size.value()))
-        # Initialize the connections window
-        self.connexion_window = connexion_window.Window()
+            # Initialize the acquisition time
+            self.required_time()
+
+            # Initialize the image to black
+            self.image_display(
+                np.zeros(self.spinBox_image_size.value() ** 2, dtype=np.uint8).reshape(self.spinBox_image_size.value(),
+                                                                                       self.spinBox_image_size.value()))
+            # Initialize the connections window
+            self.Source_Lenses = Source_Lenses.Window()
+
+        except Exception as e:
+            self.message('Error', f"Failed during the initialisation process : {e}")
 
     # Function to quit the application
     def quit(self):
@@ -92,18 +97,27 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Function to quit the application safely.
         Disconnects from the power supply if connected before exiting.
         """
-        if self.gpp_power_supply is not None:
-            self.gpp_power_supply.disconnect()
-        self.connexion_window.stop()
-        QtCore.QCoreApplication.instance().quit()
 
-    # Function to display the connections window
+        try:
+            if self.gpp_power_supply is not None:
+                self.gpp_power_supply.disconnect()
+            self.Source_Lenses.stop()
+            QtCore.QCoreApplication.instance().quit()
+
+        except Exception as e:
+            self.message('Error', f"An error occurred while quitting the application : {e}")
+
+    # Function to display the Source_Lenses window
     def show_connections_window(self):
         """
-        Function to display the "connections" window to the user when the button is pressed
+        Function to display the "Source_Lenses" window to the user when the button is pressed
         """
 
-        self.connexion_window.show()
+        try:
+            self.Source_Lenses.show()
+
+        except Exception as e:
+            self.message('Error', f"Couldn't show the Source_Lenses window : {e}")
 
     #########################################################################################
 
@@ -125,7 +139,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.comboBox_dev.addItems(items)  # Add new items
 
         except Exception as e:
-            self.message('Error', f"populate_dev_combobox function returned : {e}")
+            self.message('Error', f"Couldn't populate the NI card combo-box : {e}")
 
     # Connection to the NI Card and verification
     def connect_to_card(self):
@@ -164,7 +178,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.comboBox_sensor.addItems(ai_channels)  # Add new items
 
         except Exception as e:
-            self.message('Error', f"Connect_to_card function returned : {e}")
+            self.message('Error', f"Couldn't connect to the NI card : {e}")
 
     #########################################################################################
     # Gpp_4323 connection part
@@ -182,11 +196,11 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         try:
             self.population_thread = Thread.Population()
             self.population_thread.list.connect(self.send_to_gpp_combobox)
-            self.population_thread.errorOccurred.connect(self.handle_errors)
+            self.population_thread.errorOccurred.connect(self.handle_thread_errors)
             self.population_thread.finished.connect(self.thread_cleanup)
             self.population_thread.start()
         except Exception as e:
-            self.message('Error', f"populate_gpp_4323_combobox function returned : {e}")
+            self.message('Error', f"Couldn't populate GPP4323 combo-box : {e}")
 
     # Function to display the list to the comboBoxes
     def send_to_gpp_combobox(self, items):
@@ -220,7 +234,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 else:
                     self.message('Error', f'Failed to connect to GPP4323 : {error_checker}')
         except Exception as e:
-            self.message('Error', f"Connect_to_gpp_4323 function returned : {e}")
+            self.message('Error', f"Couldn't connect to GPP4323 : {e}")
 
     # Connection help button
     def gpp_4323_help(self):
@@ -247,7 +261,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.label_current_brightness.setText(
                 f'Brightness tension (V) : {str(tension)}')  # Shows to the user the current tension
         except Exception as e:
-            self.message('Error', f"Gpp_4323_brightness_slider_changed returned : {e}")
+            self.message('Error', f'Error in "gpp_4323_brightness_slider_changed": {e}')
 
     # Updates the value only when the user release the slider
     def gpp_4323_brightness_slider_released(self):
@@ -260,7 +274,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.gpp_power_supply.set_tension(
                 self.brightness_slider.value())  # Gets the value of the slider and send it to the power supply
         except Exception as e:
-            self.message('Error', f"Gpp_4323_brightness_slider_released returned : {e}")
+            self.message('Error', f'Error in "gpp_4323_brightness_slider_released": {e}')
 
     #########################################################################################
     # Sweep part
@@ -271,17 +285,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Checks for valid configurations and starts the SweepThread and ProgressBarThread.
         """
 
-        if self.port_dev is None:
-            self.message('Error', f"Please connect to NI Card first")
-        elif self.comboBox_hs.currentText() == self.comboBox_vs.currentText():
-            self.message('Error', f"Please choose different channels for horizontal and vertical sweep")
-        elif self.gpp_power_supply is None:
-            self.Message('Error', f"Please connect to GPP power supply first")
-        elif self.spinBox_time_per_pixel.value() < 1000000 / self.spinBox_sampling_frequency.value():
-            self.message('Error',
-                         f"You must be at least have {ceil(1000000 / self.spinBox_sampling_frequency.value())} µs per "
-                         f"pixel")
-        else:
+        if self.is_config_good():
             try:
                 # Gets the values from the comboBoxes
                 time_per_pixel = self.spinBox_time_per_pixel.value()
@@ -295,22 +299,23 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.sweep_thread = Thread.SweepThread(time_per_pixel, sampling_frequency, pixels_number,
                                                        channel_lr,
                                                        channel_ud, channel_read, mode)
-                self.sweep_thread.errorOccurred.connect(self.handle_errors)
+                self.sweep_thread.errorOccurred.connect(self.handle_thread_errors)
                 self.sweep_thread.image.connect(self.image_display)
                 self.sweep_thread.finished.connect(self.thread_cleanup)
 
                 self.progressBarThread = Thread.ProgressBar(time_per_pixel, pixels_number)
                 self.progressBarThread.progressUpdated.connect(self.update_progress_bar)
-                self.progressBarThread.errorOccurred.connect(self.handle_errors)
+                self.progressBarThread.errorOccurred.connect(self.handle_thread_errors)
                 self.progressBarThread.finished.connect(self.thread_cleanup)
 
                 self.sweep_thread.start()
                 self.progressBarThread.start()
+
             except Exception as e:
-                self.message('Error', f"Sweep function returned : {e}")
+                self.message('Error', f"An error occurred during the sweep process : {e}")
 
     # If an error occurred in any thread, we display it to the user
-    def handle_errors(self, error_message):
+    def handle_thread_errors(self, error_message):
         """
         Displays an error message if an error occurs during the sweep process.
 
@@ -322,7 +327,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             error_message (str): The error message received from the threads.
         """
 
-        self.message('Error', f"A thread returned : {error_message}")
+        self.message('Error', error_message)
 
     # Update the progression bar
     def update_progress_bar(self, value):
@@ -353,17 +358,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         prevent conflicting operations.
         """
 
-        if self.port_dev is None:
-            self.message('Error', f"Please connect to NI Card first")
-        elif self.comboBox_hs.currentText() == self.comboBox_vs.currentText():
-            self.message('Error', f"Please choose different channels for horizontal and vertical sweep")
-        elif self.gpp_power_supply is None:
-            self.Message('Error', f"Please connect to GPP power supply first")
-        elif self.spinBox_time_per_pixel.value() < 1000000 / self.spinBox_sampling_frequency.value():
-            self.message('Error',
-                         f"You must be at least have {ceil(1000000 / self.spinBox_sampling_frequency.value())} µs per "
-                         f"pixel")
-        else:
+        if self.is_config_good():
             try:
                 time_per_pixel = 4
                 sampling_frequency = 250000
@@ -375,7 +370,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.video_thread = Thread.VideoThread(time_per_pixel, sampling_frequency, pixels_number, channel_lr,
                                                        channel_ud, channel_read)
                 self.video_thread.image.connect(self.video_display)
-                self.video_thread.errorOccurred.connect(self.handle_errors)
+                self.video_thread.errorOccurred.connect(self.handle_thread_errors)
                 self.video_thread.finished.connect(self.thread_cleanup)
                 self.video_thread.start()
 
@@ -386,7 +381,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.pushButton_save_image.setEnabled(False)
 
             except Exception as e:
-                self.message('Error', f"Start video function returned : {e}")
+                self.message('Error', f"Couldn't start the video : {e}")
 
     # Stops the video
     def stop_video(self):
@@ -406,10 +401,9 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.pushButton_sweep.setEnabled(True)
             self.pushButton_save_image.setEnabled(True)
         except Exception as e:
-            self.message('Error', f"Stop video function returned : {e}")
+            self.message('Error', f"Couldn't stop the video : {e}")
 
-        #########################################################################################
-
+    #########################################################################################
     # Image part
 
     # Display the image
@@ -482,6 +476,41 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     #########################################################################################
     # Config part
+
+    def is_config_good(self):
+        """Checks if the current configuration is valid.
+
+        Returns:
+            bool: True if the configuration is valid, False otherwise.
+        """
+
+        try:
+            # Check if NI Card is connected
+            if self.port_dev is None:
+                self.message('Error', "Please connect to the NI Card first.")
+                return False
+
+            # Check if different channels are selected for horizontal and vertical sweep
+            if self.comboBox_hs.currentText() == self.comboBox_vs.currentText():
+                self.message('Error', "Please choose different channels for horizontal and vertical sweep.")
+                return False
+
+            # Check if the time per pixel is sufficient given the sampling frequency
+            min_time_per_pixel = ceil(1000000 / self.spinBox_sampling_frequency.value())
+            if self.spinBox_time_per_pixel.value() < min_time_per_pixel:
+                self.message('Error', f"You must have at least {min_time_per_pixel} µs per pixel.")
+                return False
+
+            # Check if GPP power supply is connected
+            if self.gpp_power_supply is None:
+                self.message('Error', "Please connect to GPP power supply first.")
+                return False
+
+            # If all checks pass
+            return True
+        except Exception as e:
+            self.message('Error', f"An error occurred during configuration validation: {str(e)}")
+
     def save_config(self):
         """
         Function to save the current configuration to a JSON file.
@@ -575,9 +604,13 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         resources and prevent memory leaks.
         """
 
-        sender = self.sender()  # Retrieves the object that emitted the signal (in this case, the finished thread)
-        if sender:
-            sender.deleteLater()  # Safely deletes the thread object to free up resources
+        try:
+            sender = self.sender()  # Retrieves the object that emitted the signal (in this case, the finished thread)
+            if sender:
+                sender.deleteLater()  # Safely deletes the thread object to free up resources
+
+        except Exception as e:
+            self.message('Error', f"An error occurred while cleaning up a thread : {e}")
 
     # Calculation of the required time
     def required_time(self):
@@ -589,46 +622,50 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         information in a user-friendly format.
         """
 
-        pixels_number = self.spinBox_image_size.value()
-        if self.comboBox_Scanning_Mode.currentText() == 'Normal':
-            pixels_number += 2
-        sampling_frequency = self.spinBox_sampling_frequency.value()
+        try:
+            pixels_number = self.spinBox_image_size.value()
+            if self.comboBox_Scanning_Mode.currentText() == 'Normal':
+                pixels_number += 2
+            sampling_frequency = self.spinBox_sampling_frequency.value()
 
-        # Changes the step "time_per_pixel" can take
-        min_time_per_pixel = int(1000000 / sampling_frequency)
-        self.spinBox_time_per_pixel.setSingleStep(min_time_per_pixel)
-        self.spinBox_time_per_pixel.setMinimum(min_time_per_pixel)
-        self.spinBox_time_per_pixel.setMaximum(min_time_per_pixel * 100)
+            # Changes the step "time_per_pixel" can take
+            min_time_per_pixel = int(1000000 / sampling_frequency)
+            self.spinBox_time_per_pixel.setSingleStep(min_time_per_pixel)
+            self.spinBox_time_per_pixel.setMinimum(min_time_per_pixel)
+            self.spinBox_time_per_pixel.setMaximum(min_time_per_pixel * 100)
 
-        # Calculate and display the number of time we average
-        time_per_pixel = self.spinBox_time_per_pixel.value()
-        time_per_pixel = time_per_pixel / 1000000  # s to µs
-        average = int(time_per_pixel * sampling_frequency)
+            # Calculate and display the number of time we average
+            time_per_pixel = self.spinBox_time_per_pixel.value()
+            time_per_pixel = time_per_pixel / 1000000  # s to µs
+            average = int(time_per_pixel * sampling_frequency)
 
-        # Setting average measure text
-        if average == 1:
-            self.label_average.setText(f"Taking 1 measure")
-        else:
-            self.label_average.setText(f"Taking {str(average)} measures")
+            # Setting average measure text
+            if average == 1:
+                self.label_average.setText(f"Taking 1 measure")
+            else:
+                self.label_average.setText(f"Taking {str(average)} measures")
 
-        # Calculating acquisition time
-        total_seconds = time_per_pixel * pixels_number ** 2
+            # Calculating acquisition time
+            total_seconds = time_per_pixel * pixels_number ** 2
 
-        # Displaying acquisition time
-        if total_seconds < 0.001:  # Less than 1 millisecond
-            microseconds = int(total_seconds * 1000000)  # Convert to microseconds
-            result_str = f"{microseconds} µs"
-        elif total_seconds < 1:  # Less than 1 second, but more than 1 millisecond
-            milliseconds = int(total_seconds * 1000)  # Convert to milliseconds
-            result_str = f"{milliseconds} ms"
-        elif total_seconds < 60:  # Less than 60 seconds
-            result_str = f"{int(total_seconds)} seconds"
-        else:  # 60 seconds or more
-            minutes = int(total_seconds) // 60
-            remaining_seconds = int(total_seconds) % 60
-            result_str = f"{minutes}mn {remaining_seconds}s"
+            # Displaying acquisition time
+            if total_seconds < 0.001:  # Less than 1 millisecond
+                microseconds = int(total_seconds * 1000000)  # Convert to microseconds
+                result_str = f"{microseconds} µs"
+            elif total_seconds < 1:  # Less than 1 second, but more than 1 millisecond
+                milliseconds = int(total_seconds * 1000)  # Convert to milliseconds
+                result_str = f"{milliseconds} ms"
+            elif total_seconds < 60:  # Less than 60 seconds
+                result_str = f"{int(total_seconds)} seconds"
+            else:  # 60 seconds or more
+                minutes = int(total_seconds) // 60
+                remaining_seconds = int(total_seconds) % 60
+                result_str = f"{minutes}mn {remaining_seconds}s"
 
-        self.label_time.setText(f"Acquisition time : {result_str}")  # Write the required time on the UI
+            self.label_time.setText(f"Acquisition time : {result_str}")  # Write the required time on the UI
+
+        except Exception as e:
+            self.message('Error', f"Failed during the calculation of the required acquisition time : {e}")
 
 
 #########################################################################################

@@ -13,10 +13,14 @@ def resources_list():
     Returns:
         list: A list of strings representing the available VISA resources.
     """
-    rm = pyvisa.ResourceManager()
-    items = rm.list_resources()  # Lists the connected VISA devices
-    rm.close()
-    return items
+
+    try:
+        rm = pyvisa.ResourceManager()
+        items = rm.list_resources()  # Lists the connected VISA devices
+        rm.close()
+        return items
+    except Exception as e:
+        raise Exception(f"\nFunction resources_list returned : {e}")
 
 
 # Power supply object
@@ -39,34 +43,40 @@ class PowerSupply:
         Parameters:
             port (str): The port name where the power supply is connected.
         """
+
         self.port = port
         self.device = None
 
     def connect(self):
         """
-        Connects to the power supply and initializes its settings.
+        Connects to the power supply, checks for a specific identification, and initializes its settings if matched.
 
-        This method establishes a connection to the power supply and sets initial current and voltage settings.
-        It also prints the device's identification string.
+        This method establishes a connection to the power supply, queries its identification, and if the identification
+        contains "GPP", sets initial current and voltage settings. It prints the device's identification string if it
+        contains "GPP".
 
         Returns:
             Exception: Any exception raised during connection, if any.
         """
+
         try:
             rm = pyvisa.ResourceManager()
             self.device = rm.open_resource(self.port)
-            print(self.device.query('*IDN?'))
-            print("A CHANGER IMPERATIVEMENT")
-            self.device.write(f'ISET1:0.03')
-            self.device.write(f'ISET2:0.03')
-            self.device.write(f'ISET4:0.03')
-            self.device.write(f'VSET1:32')
-            self.device.write(f'VSET2:32')
-            self.device.write(f'VSET3:0')
-            self.device.write(f'VSET4:0')
-            self.device.write(f':ALLOUTON')
+            idn_response = self.device.query('*IDN?')
+
+            if "GPP" in idn_response:
+                self.device.write(f'ISET1:0.03')
+                self.device.write(f'ISET2:0.03')
+                self.device.write(f'ISET4:0.03')
+                self.device.write(f'VSET1:32')
+                self.device.write(f'VSET2:32')
+                self.device.write(f'VSET3:0')
+                self.device.write(f'VSET4:0')
+                self.device.write(f':ALLOUTON')
+            else:
+                raise Exception(f"\nDevice not recognized. IDN: {idn_response}")
         except Exception as e:
-            return e
+            raise Exception(f"\nFunction connect in PowerSupply class returned : {e}")
 
     def set_tension(self, tension):
         """
@@ -75,8 +85,12 @@ class PowerSupply:
         Parameters:
             tension (float): The tension value to set on the power supply.
         """
-        if self.device:
-            self.device.write(f'VSET4:{tension}')
+
+        try:
+            if self.device:
+                self.device.write(f'VSET4:{tension}')
+        except Exception as e:
+            raise Exception(f"\nFunction set_tension in PowerSupply class returned : {e}")
 
     def disconnect(self):
         """
@@ -84,14 +98,18 @@ class PowerSupply:
 
         This method turns off all outputs and closes the connection to the power supply.
         """
-        if self.device:
-            self.device.write(f'ISET1:0')
-            self.device.write(f'ISET2:0')
-            self.device.write(f'ISET4:0')
-            self.device.write(f'VSET1:0')
-            self.device.write(f'VSET2:0')
-            self.device.write(f'VSET3:0')
-            self.device.write(f'VSET4:0')
-            self.device.write(f':ALLOUTOFF')
-            time.sleep(0.1)
-            self.device.close()
+
+        try:
+            if self.device:
+                self.device.write(f'ISET1:0')
+                self.device.write(f'ISET2:0')
+                self.device.write(f'ISET4:0')
+                self.device.write(f'VSET1:0')
+                self.device.write(f'VSET2:0')
+                self.device.write(f'VSET3:0')
+                self.device.write(f'VSET4:0')
+                self.device.write(f':ALLOUTOFF')
+                time.sleep(0.1)
+                self.device.close()
+        except Exception as e:
+            raise Exception(f"\nFunction disconnect in PowerSupply class returned : {e}")

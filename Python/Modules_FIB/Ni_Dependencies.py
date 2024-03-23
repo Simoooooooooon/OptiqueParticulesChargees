@@ -16,8 +16,11 @@ def ni_cards_system():
     Returns:
     nidaqmx.system.System: An object representing the local NI DAQmx system.
     """
+    try:
+        return nidaqmx.system.System.local()
 
-    return nidaqmx.system.System.local()
+    except Exception as e:
+        raise Exception(f"\nFunction ni_cards_system returned : {e}")
 
 
 def ni_cards_device(port_dev):
@@ -33,8 +36,11 @@ def ni_cards_device(port_dev):
     Returns:
     nidaqmx.system.Device: An object representing the specified NI DAQmx device.
     """
+    try:
+        return nidaqmx.system.Device(port_dev)
 
-    return nidaqmx.system.Device(port_dev)
+    except Exception as e:
+        raise Exception(f"\nFunction ni_cards_device returned : {e}")
 
 
 def close_rw_tasks(write_task, read_task):
@@ -47,9 +53,12 @@ def close_rw_tasks(write_task, read_task):
        write_task (nidaqmx.Task): The task configured for writing scanning signals.
        read_task (nidaqmx.Task): The task configured for reading the input signal.
    """
+    try:
+        read_task.close()
+        write_task.close()
 
-    read_task.close()
-    write_task.close()
+    except Exception as e:
+        raise Exception(f"\nFunction close_rw_tasks returned : {e}")
 
 
 ###############################################################################
@@ -71,12 +80,17 @@ def initial_voltage_setting(min_tension, max_tension, channel_ud):
     Returns:
         None
     """
-    with nidaqmx.Task() as init_task:
-        init_task.ao_channels.add_ao_voltage_chan(channel_ud, min_val=min_tension, max_val=max_tension)
-        init_task.write(max_tension)
-        init_task.start()
-        init_task.stop()
-        init_task.close()
+
+    try:
+        with nidaqmx.Task() as init_task:
+            init_task.ao_channels.add_ao_voltage_chan(channel_ud, min_val=min_tension, max_val=max_tension)
+            init_task.write(max_tension)
+            init_task.start()
+            init_task.stop()
+            init_task.close()
+
+    except Exception as e:
+        raise Exception(f"\nFunction initial_voltage_setting returned : {e}")
 
 
 def configure_tasks(channel_lr, channel_ud, channel_read, min_tension, max_tension,
@@ -104,6 +118,7 @@ def configure_tasks(channel_lr, channel_ud, channel_read, min_tension, max_tensi
         tuple: A tuple containing two nidaqmx task objects configured for writing and reading signals.
 
     """
+
     try:
         write_task = nidaqmx.Task()
         read_task = nidaqmx.Task()
@@ -124,10 +139,10 @@ def configure_tasks(channel_lr, channel_ud, channel_read, min_tension, max_tensi
         read_trigger_source = '/' + channel_lr.split('/')[0] + '/ao/StartTrigger'
         read_task.triggers.start_trigger.cfg_dig_edge_start_trig(read_trigger_source, trigger_edge=Edge.RISING)
 
-    except Exception as e:
-        print("Error while task configuration:", e)
+        return write_task, read_task
 
-    return write_task, read_task
+    except Exception as e:
+        raise Exception(f"\nFunction configure_tasks returned : {e}")
 
 
 def configure_video_tasks(channel_lr, channel_ud, channel_read, min_tension, max_tension,
@@ -176,10 +191,10 @@ def configure_video_tasks(channel_lr, channel_ud, channel_read, min_tension, max
         # Write both signals at the same time
         writer.write_many_sample(data_to_write)
 
-    except Exception as e:
-        print("Error while task configuration:", e)
+        return write_task, read_task
 
-    return write_task, read_task
+    except Exception as e:
+        raise Exception(f"\nFunction configure_video_tasks returned : {e}")
 
 
 ###############################################################################
@@ -224,10 +239,10 @@ def write_and_read(write_task, read_task, data_to_write, total_samples_to_read, 
         write_task.stop()
         read_task.stop()
 
-    except Exception as e:
-        print("Error while Reading&Writing:", e)
+        return raw_data
 
-    return raw_data
+    except Exception as e:
+        raise Exception(f"\nFunction write_and_read returned : {e}")
 
 
 def quick_write_and_read(write_task, read_task, total_samples_to_read, timeout):
@@ -246,6 +261,7 @@ def quick_write_and_read(write_task, read_task, total_samples_to_read, timeout):
    Returns:
        numpy.array: The raw data read from the analog input channel.
    """
+
     try:
         # Start the tasks
         read_task.start()
@@ -263,4 +279,4 @@ def quick_write_and_read(write_task, read_task, total_samples_to_read, timeout):
         return raw_data
 
     except Exception as e:
-        print("Error while QuickReading&Writing:", e)
+        raise Exception(f"\nFunction quick_write_and_read returned : {e}")
