@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>639</width>
-    <height>686</height>
+    <height>730</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -521,7 +521,7 @@
      <rect>
       <x>20</x>
       <y>630</y>
-      <width>81</width>
+      <width>71</width>
       <height>31</height>
      </rect>
     </property>
@@ -539,9 +539,9 @@
    <widget class="QPushButton" name="pushButton_load_config">
     <property name="geometry">
      <rect>
-      <x>110</x>
+      <x>100</x>
       <y>630</y>
-      <width>81</width>
+      <width>71</width>
       <height>31</height>
      </rect>
     </property>
@@ -559,9 +559,9 @@
    <widget class="QPushButton" name="pushButton_start_video">
     <property name="geometry">
      <rect>
-      <x>220</x>
+      <x>180</x>
       <y>630</y>
-      <width>81</width>
+      <width>71</width>
       <height>31</height>
      </rect>
     </property>
@@ -575,9 +575,9 @@
     </property>
     <property name="geometry">
      <rect>
-      <x>320</x>
+      <x>260</x>
       <y>630</y>
-      <width>81</width>
+      <width>71</width>
       <height>31</height>
      </rect>
     </property>
@@ -588,9 +588,9 @@
    <widget class="QPushButton" name="pushButton_connections">
     <property name="geometry">
      <rect>
-      <x>430</x>
+      <x>340</x>
       <y>630</y>
-      <width>101</width>
+      <width>91</width>
       <height>31</height>
      </rect>
     </property>
@@ -603,6 +603,26 @@
     </property>
     <property name="text">
      <string>Source/Lenses</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButton_show_write">
+    <property name="geometry">
+     <rect>
+      <x>440</x>
+      <y>630</y>
+      <width>91</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>MS Shell Dlg 2</family>
+      <weight>50</weight>
+      <bold>false</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>Write</string>
     </property>
    </widget>
   </widget>

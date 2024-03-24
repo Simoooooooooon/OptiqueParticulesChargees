@@ -11,6 +11,7 @@ from PIL import Image
 import json
 from math import ceil
 from Modules_FIB import Thread
+import Draw
 
 # Ignores the ResourceWarnings made by PyVISA library
 warnings.simplefilter("ignore", ResourceWarning)
@@ -20,24 +21,29 @@ Ui_MainWindow, QtBaseClass = uic.loadUiType("Main_interface.ui")
 
 
 # Main class for the interface
-class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
+class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     """
     Main class for the Focused Ion Beam (FIB) control interface.
     Inherits from QMainWindow and the Ui_MainWindow generated from Qt Designer.
     """
 
+    send_data_signal = QtCore.pyqtSignal(list)
     listChanged = QtCore.pyqtSignal(list)  # Signal to emit acquired data
 
     # Initialize the interface
-    def __init__(self):
+    def __init__(self, write_window):
         """
         Initialize the interface and set up UI components and connections.
         """
 
         try:
-            super(MyWindow, self).__init__()  # Initialize the parent class
+            super(MainWindow, self).__init__()  # Initialize the parent class
+            self.WriteWindow = write_window
             self.setupUi(self)  # Load the UI
             self.setWindowTitle("Interface de pilotage du FIB")  # Set window title
+
+            # Listen for the request_data_signal from SecondWindow
+            self.WriteWindow.request_data_signal.connect(self.provide_data)
 
             # Connect buttons to their respective functions
             self.pushButton_quit.clicked.connect(self.quit)
@@ -51,6 +57,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.pushButton_load_config.clicked.connect(self.load_config)
             self.pushButton_save_config.clicked.connect(self.save_config)
             self.pushButton_connections.clicked.connect(self.show_connections_window)
+            self.pushButton_show_write.clicked.connect(self.show_write_window)
             self.pushButton_start_video.clicked.connect(self.start_video)
             self.pushButton_stop_video.clicked.connect(self.stop_video)
 
@@ -91,6 +98,23 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         except Exception as e:
             self.message('Error', f"Failed during the initialisation process : {e}")
 
+    def provide_data(self):
+        try:
+            # Automatically send data back to SecondWindow when requested
+            data = []
+            channel_lr = self.comboBox_hs.currentText()
+            channel_ud = self.comboBox_vs.currentText()
+            sampling_frequency = self.spinBox_sampling_frequency.value()
+
+            if self.is_config_good():
+                data.append(channel_lr)
+                data.append(channel_ud)
+                data.append(sampling_frequency)
+                self.send_data_signal.emit(data)
+
+        except Exception as e:
+            self.message('Error', f"An error occurred while sending data : {e}")
+
     # Function to quit the application
     def quit(self):
         """
@@ -118,6 +142,17 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         except Exception as e:
             self.message('Error', f"Couldn't show the Source_Lenses window : {e}")
+
+    def show_write_window(self):
+        """
+        Function to display the "Write" window to the user when the button is pressed
+        """
+
+        try:
+            self.WriteWindow.show()
+
+        except Exception as e:
+            self.message('Error', f"Couldn't show the Write window : {e}")
 
     #########################################################################################
 
@@ -502,9 +537,9 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 return False
 
             # Check if GPP power supply is connected
-            if self.gpp_power_supply is None:
-                self.message('Error', "Please connect to GPP power supply first.")
-                return False
+            #            if self.gpp_power_supply is None:
+            #                self.message('Error', "Please connect to GPP power supply first.")
+            #                return False
 
             # If all checks pass
             return True
@@ -662,7 +697,7 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 remaining_seconds = int(total_seconds) % 60
                 result_str = f"{minutes}mn {remaining_seconds}s"
 
-            self.label_time.setText(f"Acquisition time : {result_str}")  # Write the required time on the UI
+            self.label_time.setText(f"Acquisition time : {result_str}")
 
         except Exception as e:
             self.message('Error', f"Failed during the calculation of the required acquisition time : {e}")
@@ -673,6 +708,11 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 # Main function
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)  # Create a Qt application
-    window = MyWindow()  # Create an instance of MyWindow
-    window.show()  # Show the window
+
+    writeWindow = Draw.Write_Interface.WriteWindow()
+    mainWindow = MainWindow(writeWindow)  # Create an instance of MyWindow
+
+    mainWindow.send_data_signal.connect(writeWindow.Write_Signals)
+
+    mainWindow.show()  # Show the window
     sys.exit(app.exec())  # Start the application event loop
