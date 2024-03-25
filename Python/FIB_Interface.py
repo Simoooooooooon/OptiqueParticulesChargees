@@ -27,7 +27,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     Inherits from QMainWindow and the Ui_MainWindow generated from Qt Designer.
     """
 
-    send_data_signal = QtCore.pyqtSignal(list)
+    send_data_signal = QtCore.pyqtSignal(list)  # Signal to send data to the "write" window
     listChanged = QtCore.pyqtSignal(list)  # Signal to emit acquired data
 
     # Initialize the interface
@@ -38,11 +38,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         try:
             super(MainWindow, self).__init__()  # Initialize the parent class
-            self.WriteWindow = write_window
+            self.WriteWindow = write_window   # Create an instance of the "write" window
             self.setupUi(self)  # Load the UI
             self.setWindowTitle("Interface de pilotage du FIB")  # Set window title
 
-            # Listen for the request_data_signal from SecondWindow
+            # Listen for the request_data_signal from the "write" window
             self.WriteWindow.request_data_signal.connect(self.provide_data)
 
             # Connect buttons to their respective functions
@@ -99,6 +99,19 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.message('Error', f"Failed during the initialisation process : {e}")
 
     def provide_data(self):
+        """
+        Gathers and sends configuration data to the write window.
+
+        This method is designed to collect data relevant to the write window configuration,
+        specifically the selected channels for Left-Right and Up-Down signals and the desired
+        sampling frequency. It checks if the current configuration is valid through `is_config_good`.
+        If valid, it compiles this data into a list and emits it using a signal to a receiver.
+
+        Raises:
+        - Exception: Captures and handles any exceptions, displaying an error message with the
+          details of the exception.
+        """
+
         try:
             # Automatically send data back to SecondWindow when requested
             data = []
@@ -126,6 +139,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             if self.gpp_power_supply is not None:
                 self.gpp_power_supply.disconnect()
             self.Source_Lenses.stop()
+            self.WriteWindow.Stop_Signals()
             QtCore.QCoreApplication.instance().quit()
 
         except Exception as e:
@@ -709,10 +723,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)  # Create a Qt application
 
-    writeWindow = Draw.Write_Interface.WriteWindow()
-    mainWindow = MainWindow(writeWindow)  # Create an instance of MyWindow
+    writeWindow = Draw.Write_Interface.WriteWindow()    # Create an instance of WriteWindow
+    mainWindow = MainWindow(writeWindow)  # Create an instance of MainWindow
 
-    mainWindow.send_data_signal.connect(writeWindow.Write_Signals)
+    mainWindow.send_data_signal.connect(writeWindow.receive_data)   # Send data to the WriteWindow
 
     mainWindow.show()  # Show the window
     sys.exit(app.exec())  # Start the application event loop
