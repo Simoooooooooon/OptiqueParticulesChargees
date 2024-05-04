@@ -2,7 +2,6 @@ import nidaqmx
 from nidaqmx.constants import AcquisitionType
 from nidaqmx.stream_writers import AnalogMultiChannelWriter
 import numpy as np
-import time
 
 
 def config_task(task, channel_lr, channel_ud, signal_lr, signal_ud, sampling_frequency):
@@ -31,7 +30,7 @@ def config_task(task, channel_lr, channel_ud, signal_lr, signal_ud, sampling_fre
         # Configure the channels
         task.ao_channels.add_ao_voltage_chan(channel_lr, min_val=-10, max_val=10)
         task.ao_channels.add_ao_voltage_chan(channel_ud, min_val=-10, max_val=10)
-        task.timing.cfg_samp_clk_timing(rate=sampling_frequency, sample_mode=AcquisitionType.CONTINUOUS)
+        task.timing.cfg_samp_clk_timing(rate=sampling_frequency, sample_mode=AcquisitionType.FINITE, samps_per_chan=len(signal_lr))
         data_to_write = np.array([signal_lr, signal_ud])
 
         # Create a StreamWriter for the analog outputs
@@ -71,59 +70,34 @@ def reset(port):
 
 def write_signals_to_NI(channel_lr, channel_ud, signal_lr, signal_ud, sampling_frequency, required_time):
     """
-    Writes specified LR and UD signals to a NI-DAQmx device over a set duration.
+        Writes voltage signals to the NI-DAQmx card using specified channels.
 
-    Initiates a task to write analog voltage signals to specified channels for controlling
-    Left-Right and Up-Down movements. The function sets up the task with the provided channel
-    names, signal data, and sampling frequency, then starts the task and maintains it for
-    the duration specified by `required_time`. After the operation completes, the task is
-    stopped and cleaned up.
+        This function creates and configures a DAQmx task to write analog voltage signals for Left-Right (LR) and Up-Down (UD) movements to specified channels. It controls the timing and duration of the signal output based on the provided sampling frequency and the required operation time. The function handles task setup, execution, and teardown to ensure that the signals are output correctly.
 
-    Parameters:
-    - channel_lr (str): The name of the channel for the LR signal.
-    - channel_ud (str): The name of the channel for the UD signal.
-    - signal_lr (numpy.ndarray): The data array for the LR signal.
-    - signal_ud (numpy.ndarray): The data array for the UD signal.
-    - sampling_frequency (int): The sampling frequency for signal output.
-    - iterations (int): The number of iterations to repeat the signal output.
-                        This parameter is currently not used but included for future scalability.
-    - timeout (float): The timeout for the operation, in seconds. Currently not used but included for
-                       compatibility and future scalability.
-    - required_time (float): The total duration to run the signal output, in seconds.
+        Parameters:
+        - channel_lr (str): The name of the channel for outputting the LR signal.
+        - channel_ud (str): The name of the channel for outputting the UD signal.
+        - signal_lr (numpy.ndarray): The array containing the LR signal data.
+        - signal_ud (numpy.ndarray): The array containing the UD signal data.
+        - sampling_frequency (int): The frequency at which the signals should be sampled and output.
+        - required_time (float): The maximum duration in seconds to wait for the task to complete before stopping.
 
-    Raises:
-    - Exception: If any part of the signal writing process fails, an exception is raised with a
-      detailed message of what went wrong.
-    """
+        Raises:
+        - Exception: If any part of the signal writing process fails, an exception is raised with a detailed error message.
+        """
 
     try:
-        start_time = time.time()  # Capture the start time
         with nidaqmx.Task() as task:
             config_task(task, channel_lr, channel_ud, signal_lr, signal_ud, sampling_frequency)
 
             # Start the task
             task.start()
 
-            # Wait for the end of the tasks based on a custom time control
-            while time.time() - start_time < required_time:
-                time.sleep(0.1)  # Sleep for a short period to avoid busy waiting
+            # Wait for the task to end
+            task.wait_until_done(timeout=required_time)
 
             # Stop the task
             task.stop()
 
     except Exception as e:
         raise Exception(f"\nCouldn't write the signals to the card : {e}")
-
-# TBD
-'''def ajout_sinus(signal_lr, signal_ud, amplitude, frequence_relative):
-    # Nombre total d'échantillons dans les signaux
-    n_echantillons = len(signal_lr)
-
-    # Générer le signal sinusoidal
-    sinus = amplitude * np.sin(2 * np.pi * frequence_relative * np.arange(n_echantillons))
-
-    # Ajouter le sinus aux signaux
-    signal_lr += sinus
-    signal_ud += sinus
-
-    return signal_lr, signal_ud'''

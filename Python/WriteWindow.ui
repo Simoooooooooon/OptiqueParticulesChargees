@@ -72,36 +72,21 @@
       <string>Hide</string>
      </property>
     </widget>
-    <widget class="QPushButton" name="pushButton_Triangles">
+    <widget class="QPushButton" name="pushButton_VoltageMap">
      <property name="enabled">
       <bool>false</bool>
      </property>
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>80</y>
+       <y>100</y>
        <width>111</width>
-       <height>31</height>
+       <height>41</height>
       </rect>
      </property>
      <property name="text">
-      <string>Compute triangles</string>
-     </property>
-    </widget>
-    <widget class="QPushButton" name="pushButton_Path">
-     <property name="enabled">
-      <bool>false</bool>
-     </property>
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>130</y>
-       <width>111</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Compute path</string>
+      <string>Create Voltagte
+Map</string>
      </property>
     </widget>
     <widget class="QPushButton" name="pushButton_Signals">
@@ -111,7 +96,7 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>180</y>
+       <y>240</y>
        <width>111</width>
        <height>31</height>
       </rect>
@@ -160,7 +145,7 @@
      <property name="geometry">
       <rect>
        <x>20</x>
-       <y>250</y>
+       <y>180</y>
        <width>91</width>
        <height>22</height>
       </rect>
@@ -185,7 +170,7 @@
      <property name="geometry">
       <rect>
        <x>20</x>
-       <y>230</y>
+       <y>160</y>
        <width>91</width>
        <height>16</height>
       </rect>

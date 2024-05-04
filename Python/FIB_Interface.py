@@ -83,7 +83,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
             # Initialize the comboBoxes
             self.populate_dev_combobox()
-            # self.populate_gpp_4323_combobox()
+            self.populate_gpp_4323_combobox()
 
             # Initialize the acquisition time
             self.required_time()
@@ -608,6 +608,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.comboBox_vs.setCurrentText(config.get("channel_ud", ""))
             self.comboBox_sensor.setCurrentText(config.get("channel_read", ""))
             self.comboBox_gpp_4323.setCurrentText(config.get("gpp_power_supply", ""))
+            self.connect_to_gpp_4323()
 
         # Handles errors
         except FileNotFoundError:
