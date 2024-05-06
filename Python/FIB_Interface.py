@@ -292,8 +292,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         """
 
         self.message('Help',
-                     'Connect both CH1(-) and CH2(-) together and take your output between CH1(+) and CH2().\nConnect '
-                     'the electron detector to CH4.')
+                     'Connect both CH1(-) and CH2(+) together.\n+32V is at CH1(+), 0V is at CH2(+) and -32V is at CH2(-).\nConnect the brown cable to CH4(+) and the blue cable to CH4(-).')
 
     #########################################################################################
     # Sliders part
